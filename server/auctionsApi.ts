@@ -35,16 +35,55 @@ function setCached<T>(key: string, data: T, ttlMs: number): void {
   }
 }
 
-// ─── Rate-limit aware fetch with retry ────────────────────────────────────────
-async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>, cacheTtlMs = 0): Promise<T> {
+// ─── Request queue: enforce minimum 700ms between API calls ──────────────────────
+let lastCallTime = 0;
+let pendingQueue: Array<() => void> = [];
+let queueRunning = false;
+
+function buildUrl(path: string, params?: Record<string, string | number | undefined>): URL {
   const url = new URL(`${BASE_URL}${path}`);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined && v !== null && v !== "") {
-        url.searchParams.set(k, String(v));
-      }
+      if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
     }
   }
+  return url;
+}
+
+async function rateLimitedFetch(urlStr: string): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const execute = async () => {
+      const now = Date.now();
+      const elapsed = now - lastCallTime;
+      const MIN_INTERVAL = 700; // ms between requests
+      if (elapsed < MIN_INTERVAL) {
+        await new Promise(r => setTimeout(r, MIN_INTERVAL - elapsed));
+      }
+      lastCallTime = Date.now();
+      try {
+        const res = await fetch(urlStr, {
+          headers: { "x-api-key": getApiKey(), "accept": "application/json" },
+        });
+        resolve(res);
+      } catch (e) {
+        reject(e);
+      } finally {
+        // Process next in queue
+        const next = pendingQueue.shift();
+        if (next) next(); else queueRunning = false;
+      }
+    };
+    if (!queueRunning) {
+      queueRunning = true;
+      execute();
+    } else {
+      pendingQueue.push(execute);
+    }
+  });
+}
+
+async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>, cacheTtlMs = 0): Promise<T> {
+  const url = buildUrl(path, params);
   const cacheKey = url.toString();
 
   // Return cached result if available
@@ -53,21 +92,15 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
     if (cached !== null) return cached;
   }
 
-  // Retry up to 3 times on 429 with exponential backoff
+  // Retry up to 4 times on 429 with increasing wait
   let lastError: Error | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) {
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-    }
-    const res = await fetch(url.toString(), {
-      headers: {
-        "x-api-key": getApiKey(),
-        "accept": "application/json",
-      },
-    });
+  const delays = [0, 2000, 4000, 8000];
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) await new Promise(r => setTimeout(r, delays[attempt]));
+    const res = await rateLimitedFetch(url.toString());
     if (res.status === 429) {
       lastError = new Error(`AuctionsAPI error 429: demasiadas solicitudes, intenta de nuevo en unos segundos`);
-      continue; // retry
+      continue;
     }
     if (!res.ok) {
       const text = await res.text().catch(() => "");

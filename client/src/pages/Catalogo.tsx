@@ -187,11 +187,14 @@ export default function Catalogo() {
   const [showFilters, setShowFilters] = useState(false);
   const [makeSearch, setMakeSearch] = useState("");
 
-  // Dynamic manufacturer/model data from AuctionsAPI
-  const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery();
+  // Dynamic manufacturer/model data — only load when filter panel is open (saves API calls)
+  const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery(
+    undefined,
+    { enabled: showFilters }
+  );
   const { data: models } = trpc.vehicles.models.useQuery(
     { manufacturerId: filters.manufacturer_id! },
-    { enabled: !!filters.manufacturer_id }
+    { enabled: showFilters && !!filters.manufacturer_id }
   );
 
   // Filter manufacturers list by search text

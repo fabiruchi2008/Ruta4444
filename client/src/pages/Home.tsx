@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Car, Calculator, TrendingUp, Shield, Clock, CheckCircle, ChevronRight, Zap, Gauge, Fuel, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,8 +55,14 @@ function normalizeVehicle(v: any) {
 }
 
 export default function Home() {
+  // Delay featured vehicles load by 2s to avoid competing with other queries on mount
+  const [featuredEnabled, setFeaturedEnabled] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFeaturedEnabled(true), 2000);
+    return () => clearTimeout(t);
+  }, []);
   const featuredInput = useMemo(() => ({ per_page: 8, exclude_expired_auctions: 1, bid_price_to: 15000 }), []);
-  const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput);
+  const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput, { enabled: featuredEnabled });
   const featuredVehicles = (featuredData as any)?.data?.slice(0, 6) || [];
 
   return (
