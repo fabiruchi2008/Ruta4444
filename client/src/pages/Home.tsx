@@ -13,7 +13,7 @@ const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 
 const stats = [
   { value: "500+", label: "Vehículos Importados" },
-  { value: "Q10K+", label: "Ganancia Mínima Garantizada" },
+  { value: "24h", label: "Respuesta en 24 Horas" },
   { value: "100%", label: "Transparencia en Costos" },
   { value: "15 días", label: "Tiempo Promedio de Entrega" },
 ];
@@ -21,7 +21,7 @@ const stats = [
 const features = [
   { icon: Car, color: "#00C8E0", title: "Catálogo en Tiempo Real", desc: "Accede a miles de vehículos de Copart e IAAI actualizados al instante. Filtra por marca, precio, condición y más." },
   { icon: Calculator, color: "#F97316", title: "Cotizador Automático", desc: "Calcula el costo total de importación incluyendo fees, transporte, aranceles e IVA. Sin sorpresas." },
-  { icon: TrendingUp, color: "#22C55E", title: "Análisis de Mercado", desc: "Comparamos precios del mercado guatemalteco para garantizarte una ganancia mínima de Q10,000." },
+  { icon: TrendingUp, color: "#22C55E", title: "Análisis de Mercado GT", desc: "Comparamos precios del mercado guatemalteco para que veas el valor real del vehículo antes de importar." },
   { icon: Shield, color: "#A855F7", title: "Proceso Seguro", desc: "Manejamos todos los trámites aduanales, documentación y transporte desde USA hasta Guatemala." },
 ];
 
@@ -82,8 +82,7 @@ export default function Home() {
                 <br />IDEAL DE{" "}<span className="text-[#F97316]">USA</span>
               </motion.h1>
               <motion.p variants={fadeUp} className="text-slate-400 text-lg leading-relaxed max-w-lg">
-                Accede a miles de vehículos de subastas americanas con cotización automática, análisis de mercado guatemalteco y garantía de ganancia mínima de{" "}
-                <span className="text-[#22C55E] font-semibold">Q10,000</span>.
+                Accede a miles de vehículos de subastas americanas con cotización automática, análisis de mercado guatemalteco y desglose completo de todos los costos de importación.
               </motion.p>
               <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
                 <Link href="/catalogo">
@@ -308,7 +307,7 @@ export default function Home() {
             <h2 className="font-display text-5xl md:text-7xl text-white mb-6">
               EMPIEZA A <span className="text-[#00C8E0]">IMPORTAR</span><br />HOY MISMO
             </h2>
-            <p className="text-slate-400 text-lg mb-8">Únete a cientos de guatemaltecos que ya importan sus vehículos con Ruta Cars GT. Transparencia total, ganancia garantizada.</p>
+            <p className="text-slate-400 text-lg mb-8">Únete a guatemaltecos que ya importan sus vehículos con Ruta Cars GT. Transparencia total en costos, proceso simple y seguro.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/catalogo">
                 <Button size="lg" className="bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-bold px-10 py-6 text-lg btn-press" style={{boxShadow:"0 0 20px rgba(0,200,224,0.3)"}}>

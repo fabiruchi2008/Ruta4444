@@ -113,7 +113,7 @@ export default function Cotizador() {
   }
 
   const profitGTQ = marketData?.estimatedProfitGTQ || 0;
-  const isGoodDeal = profitGTQ >= 10000;
+  const isGoodDeal = profitGTQ > 0;
 
   return (
     <div className="min-h-screen bg-[#080D18] pt-20">
@@ -305,7 +305,7 @@ export default function Cotizador() {
                     <div className="flex items-center gap-2 mb-2">
                       {isGoodDeal ? <CheckCircle className="w-5 h-5 text-[#22C55E]" /> : <AlertTriangle className="w-5 h-5 text-[#F97316]" />}
                       <span className={`font-semibold ${isGoodDeal ? "text-[#22C55E]" : "text-[#F97316]"}`}>
-                        {isGoodDeal ? "¡Buena Inversión!" : "Ganancia por debajo del mínimo"}
+                        {isGoodDeal ? "¡Vehículo con buen potencial en Guatemala!" : "Mercado con demanda limitada"}
                       </span>
                     </div>
                     <p className="text-slate-300 text-sm">{marketData.recommendation}</p>
@@ -318,11 +318,11 @@ export default function Cotizador() {
                       <p className="text-slate-500 text-xs">Rango: Q{marketData.priceRangeMin?.toLocaleString()} - Q{marketData.priceRangeMax?.toLocaleString()}</p>
                     </div>
                     <div className="bg-[#0F1624] rounded-xl p-3">
-                      <p className="text-slate-400 text-xs mb-1">Tu Ganancia Estimada</p>
+                      <p className="text-slate-400 text-xs mb-1">Valor vs Costo de Importación</p>
                       <p className={`font-bold text-lg ${isGoodDeal ? "text-[#22C55E]" : "text-[#F97316]"}`}>
-                        Q{marketData.estimatedProfitGTQ?.toLocaleString()}
+                        {isGoodDeal ? "+" : ""}Q{marketData.estimatedProfitGTQ?.toLocaleString()}
                       </p>
-                      <p className="text-slate-500 text-xs">{marketData.profitMarginPercent?.toFixed(1)}% de margen</p>
+                      <p className="text-slate-500 text-xs">{marketData.profitMarginPercent?.toFixed(1)}% sobre costo total</p>
                     </div>
                   </div>
 

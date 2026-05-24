@@ -63,6 +63,8 @@ export const quotes = mysqlTable("quotes", {
   totalGTQ: decimal("totalGTQ", { precision: 12, scale: 2 }),
   exchangeRate: decimal("exchangeRate", { precision: 8, scale: 4 }),
   status: mysqlEnum("status", ["pending", "contacted", "in_process", "completed", "cancelled"]).default("pending").notNull(),
+  trackingCode: varchar("trackingCode", { length: 20 }).unique(),
+  adminNotes: text("adminNotes"),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

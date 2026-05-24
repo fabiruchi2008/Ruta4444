@@ -15,12 +15,15 @@ const DOMAINS = [
 
 const BODY_TYPES = [
   { id: 1, label: "Sedán" },
-  { id: 2, label: "SUV" },
-  { id: 3, label: "Pickup" },
-  { id: 4, label: "Hatchback" },
-  { id: 5, label: "Van" },
-  { id: 6, label: "Coupe" },
-  { id: 7, label: "Convertible" },
+  { id: 2, label: "Wagon" },
+  { id: 3, label: "Coupe" },
+  { id: 4, label: "Pickup" },
+  { id: 5, label: "SUV" },
+  { id: 6, label: "Cabrio / Convertible" },
+  { id: 7, label: "Van" },
+  { id: 11, label: "Hatchback" },
+  { id: 20, label: "Liftback" },
+  { id: 27, label: "Sport Car" },
 ];
 
 function normalizeVehicle(vehicle: any) {
@@ -175,6 +178,7 @@ export default function Catalogo() {
   });
 
   const [showFilters, setShowFilters] = useState(false);
+  const [makeSearch, setMakeSearch] = useState("");
 
   // Dynamic manufacturer/model data from AuctionsAPI
   const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery();
@@ -182,6 +186,14 @@ export default function Catalogo() {
     { manufacturerId: filters.manufacturer_id! },
     { enabled: !!filters.manufacturer_id }
   );
+
+  // Filter manufacturers list by search text
+  const allMakes: any[] = useMemo(() => {
+    const list = (manufacturers as any)?.data || [];
+    if (!makeSearch.trim()) return list;
+    return list.filter((m: any) => m.name?.toLowerCase().includes(makeSearch.toLowerCase()));
+  }, [manufacturers, makeSearch]);
+
   const searchType = detectSearchType(filters.search_query);
 
   const queryInput = useMemo(() => ({
@@ -259,13 +271,23 @@ export default function Catalogo() {
                 </SelectContent>
               </Select>
 
-              <Select onValueChange={(v) => setFilters(f => ({ ...f, manufacturer_id: v === "all" ? undefined : parseInt(v), model_id: undefined, page: 1 }))}>
+              <Select onValueChange={(v) => { setFilters(f => ({ ...f, manufacturer_id: v === "all" ? undefined : parseInt(v), model_id: undefined, page: 1 })); setMakeSearch(""); }}>
                 <SelectTrigger className="bg-[#141E30] border-[#243048] text-slate-300">
                   <SelectValue placeholder="Marca" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
+                <SelectContent className="bg-[#141E30] border-[#243048] max-h-72">
+                  {/* Search box inside dropdown */}
+                  <div className="px-2 py-1.5 sticky top-0 bg-[#141E30] border-b border-[#243048] z-10">
+                    <input
+                      placeholder="Buscar marca..."
+                      value={makeSearch}
+                      onChange={e => setMakeSearch(e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-full px-2 py-1 text-sm bg-[#0F1624] border border-[#243048] rounded text-white placeholder:text-slate-500 outline-none"
+                    />
+                  </div>
                   <SelectItem value="all">Todas las marcas</SelectItem>
-                  {((manufacturers as any)?.data || manufacturers as any || [])?.slice(0, 60).map((m: any) => (
+                  {allMakes.map((m: any) => (
                     <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -319,7 +341,7 @@ export default function Catalogo() {
                 className="bg-[#141E30] border-[#243048] text-white placeholder:text-slate-500"
                 onChange={(e) => setFilters(f => ({ ...f, bid_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))}
               />
-              <Button onClick={() => setFilters({ search_query: "", domain_id: undefined as number | undefined, manufacturer_id: undefined as number | undefined, model_id: undefined as number | undefined, from_year: undefined as number | undefined, to_year: undefined as number | undefined, bid_price_from: undefined as number | undefined, bid_price_to: undefined as number | undefined, body_type: undefined as number | undefined, page: 1, per_page: 24 })} variant="outline" className="border-[#243048] text-slate-400 hover:text-white col-span-2 md:col-span-1">
+              <Button onClick={() => { setFilters({ search_query: "", domain_id: undefined as number | undefined, manufacturer_id: undefined as number | undefined, model_id: undefined as number | undefined, from_year: undefined as number | undefined, to_year: undefined as number | undefined, bid_price_from: undefined as number | undefined, bid_price_to: undefined as number | undefined, body_type: undefined as number | undefined, page: 1, per_page: 24 }); setMakeSearch(""); }} variant="outline" className="border-[#243048] text-slate-400 hover:text-white col-span-2 md:col-span-1">
                 <X className="w-4 h-4 mr-1" /> Limpiar Filtros
               </Button>
             </motion.div>

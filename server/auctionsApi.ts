@@ -118,38 +118,64 @@ export interface AuctionModel {
 export interface SearchCarsParams {
   page?: number;
   per_page?: number;
-  domain_id?: number;       // 1=IAAI, 3=Copart
-  manufacturer_id?: number;
-  model_id?: number;
+  domain_id?: number;            // 1=IAAI, 3=Copart
+  manufacturer_id?: number;      // Get IDs from /manufacturers
+  model_id?: number;             // Get IDs from /models
+  generation_id?: number;
   from_year?: number;
   to_year?: number;
-  body_type?: number;       // 1=sedan,4=pickup,5=SUV,11=hatchback
-  condition?: number;       // 0=run&drives,6=engine_starts
-  transmission?: number;   // 1=auto,2=manual
-  drive_wheel?: number;    // 1=rear,2=front,3=all
-  fuel_type?: number;      // 4=gasoline,1=diesel,2=electric
+  year?: number;
+  vehicle_type?: number;         // 1=automobile (default)
+  body_type?: number;            // 1=sedan,2=wagon,3=coupe,4=pickup,5=SUV,6=cabrio,7=VAN,11=hatchback,20=liftback,27=sport_car
+  condition?: number;            // 0=run&drives,1=for_repair,3=not_run,6=engine_starts
+  transmission?: number;         // 1=auto,2=manual
+  drive_wheel?: number;          // 1=rear,2=front,3=all
+  fuel_type?: number;            // 1=diesel,2=electric,3=hybrid,4=gasoline
+  color?: number;
+  cylinders?: number;
   bid_price_from?: number;
   bid_price_to?: number;
   buy_now_price_from?: number;
   buy_now_price_to?: number;
+  buy_now?: number;              // 1 = only cars with Buy Now price
   odometer_from_mi?: number;
   odometer_to_mi?: number;
-  damage?: string;
-  name?: string;
-  search_query?: string;
-  exclude_expired_auctions?: number;
+  damage?: string;               // text search: "hail", "burn", etc.
+  name?: string;                 // search inside lot title/name (make, model, Corvette, etc.)
+  search_query?: string;         // VIN or lot number search
+  vin?: string;                  // VIN partial search (use _ for partial: NLM91_)
+  state_code?: string;           // state code: CA, FL, TX, etc.
+  country?: string;              // US, CA
+  exclude_expired_auctions?: number; // 1 = exclude expired
+  without_sale_date?: number;
+  sale_date_in_days?: number;
   minutes?: number;
+  simple_paginate?: number;      // 0 = include total count
+  status?: number;
 }
 
 // ─── API functions ─────────────────────────────────────────────────────────────
 
 export async function searchCars(params: SearchCarsParams = {}): Promise<AuctionListResponse> {
+  const { search_query, simple_paginate, ...rest } = params;
   const p: Record<string, string | number | undefined> = {
-    per_page: params.per_page ?? 24,
-    page: params.page ?? 1,
+    per_page: rest.per_page ?? 24,
+    page: rest.page ?? 1,
     vehicle_type: 1, // automobiles only
-    ...params,
+    simple_paginate: 0, // always request total count for pagination
+    ...rest,
   };
+  // AuctionsAPI: 'search_query' = VIN or lot number; 'name' = free-text title/make/model search
+  if (search_query && search_query.trim()) {
+    const q = search_query.trim();
+    // If it looks like a VIN (17 chars) or lot number (all digits), use search_query
+    if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(q) || /^\d{6,12}$/.test(q)) {
+      p.search_query = q;
+    } else {
+      // Free-text search (make, model, brand name like Mercedes)
+      p.name = q;
+    }
+  }
   return apiFetch<AuctionListResponse>("/cars", p);
 }
 

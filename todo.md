@@ -59,6 +59,16 @@
 - [x] Notificaciones al owner implementadas en quotes.create y contacts.create
 - [x] Panel admin con página de seguimiento de cotizaciones y contactos
 
+## Correcciones v3 (AuctionsAPI + Catálogo)
+- [x] Quitar mención pública de ganancia mínima del frontend (Home, Cotizador) - solo queda en panel admin
+- [x] Corregir búsqueda de texto: usar parámetro `name` para búsqueda libre (Mercedes, BMW, etc.)
+- [x] Corregir body_type IDs según documentación real de AuctionsAPI (sedan=1, wagon=2, coupe=3, pickup=4, SUV=5...)
+- [x] Quitar límite de 60 marcas en dropdown del catálogo - ahora muestra todas
+- [x] Agregar búsqueda de texto dentro del dropdown de marcas
+- [x] Actualizar SearchCarsParams con todos los parámetros correctos de la API
+- [x] Mapeo correcto: search_query=VIN/lote, name=texto libre (marca/modelo)
+- [x] simple_paginate=0 para obtener total de resultados en paginación
+
 ## Pendientes de Siguiente Iteración
 - [ ] Página de seguimiento de pedidos para clientes (consulta pública por email/teléfono)
 - [ ] Notificaciones push en tiempo real al owner (WebSocket o polling)
