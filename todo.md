@@ -70,5 +70,5 @@
 - [x] simple_paginate=0 para obtener total de resultados en paginación
 
 ## Pendientes de Siguiente Iteración
-- [ ] Página de seguimiento de pedidos para clientes (consulta pública por email/teléfono)
-- [ ] Notificaciones push en tiempo real al owner (WebSocket o polling)
+- [x] Página de seguimiento de pedidos para clientes (/seguimiento) - búsqueda por código RC-XXXXXX, progreso visual, notas del asesor
+- [x] Notificaciones al owner implementadas con notifyOwner en cada cotización y contacto (incluye código de tracking)

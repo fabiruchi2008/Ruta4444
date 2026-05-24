@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { BarChart3, Car, FileText, Settings, Users, TrendingUp, DollarSign, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,30 @@ export default function Admin() {
     ]);
   }
 
-  const { data: quotes, isLoading: quotesLoading } = trpc.admin.getQuotes.useQuery(undefined, { enabled: isAuthenticated });
-  const { data: contacts, isLoading: contactsLoading } = trpc.admin.getContacts.useQuery(undefined, { enabled: isAuthenticated });
-  const { data: stats } = trpc.admin.getStats.useQuery(undefined, { enabled: isAuthenticated });
+  // Polling every 30s for real-time updates — shows toast when new quotes arrive
+  const prevQuoteCount = useRef<number | null>(null);
+  const { data: quotes, isLoading: quotesLoading } = trpc.admin.getQuotes.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 30_000,
+  });
+  const { data: contacts, isLoading: contactsLoading } = trpc.admin.getContacts.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 30_000,
+  });
+  const { data: stats } = trpc.admin.getStats.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 60_000,
+  });
+
+  // Notify admin when new quotes arrive via polling
+  useEffect(() => {
+    const count = (quotes as any[])?.length ?? null;
+    if (count !== null && prevQuoteCount.current !== null && count > prevQuoteCount.current) {
+      const newCount = count - prevQuoteCount.current;
+      toast.success(`🚗 ${newCount} nueva${newCount > 1 ? 's' : ''} cotización${newCount > 1 ? 'es' : ''} recibida${newCount > 1 ? 's' : ''}`, { duration: 6000 });
+    }
+    if (count !== null) prevQuoteCount.current = count;
+  }, [quotes]);
 
   const updateQuoteStatus = trpc.admin.updateQuoteStatus.useMutation({
     onSuccess: () => toast.success("Estado actualizado"),
