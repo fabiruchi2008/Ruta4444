@@ -54,7 +54,11 @@
 - [x] Integrar settings persistentes en panel admin (guardar tipo de cambio en DB) - useEffect + trpc.settings.update
 - [x] Agregar filtro de tipo de carrocería en Catálogo
 - [x] Búsqueda inteligente por VIN/lote en Catálogo (detección automática)
-- [ ] Agregar filtro por marca/modelo con manufacturers de AuctionsAPI
-- [ ] Agregar sección de vehículos destacados en Home
-- [ ] Notificaciones push al owner en tiempo real
-- [ ] Página de seguimiento de pedidos para clientes
+- [x] Agregar filtro por marca/modelo con manufacturers de AuctionsAPI (Select dinámico con datos reales)
+- [x] Agregar sección de vehículos destacados en Home (grid de 6 vehículos con cotizar directo)
+- [x] Notificaciones al owner implementadas en quotes.create y contacts.create
+- [x] Panel admin con página de seguimiento de cotizaciones y contactos
+
+## Pendientes de Siguiente Iteración
+- [ ] Página de seguimiento de pedidos para clientes (consulta pública por email/teléfono)
+- [ ] Notificaciones push en tiempo real al owner (WebSocket o polling)

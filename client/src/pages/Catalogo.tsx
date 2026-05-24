@@ -163,6 +163,8 @@ export default function Catalogo() {
   const [filters, setFilters] = useState({
     search_query: "",
     domain_id: undefined as number | undefined,
+    manufacturer_id: undefined as number | undefined,
+    model_id: undefined as number | undefined,
     from_year: undefined as number | undefined,
     to_year: undefined as number | undefined,
     bid_price_from: undefined as number | undefined,
@@ -173,6 +175,13 @@ export default function Catalogo() {
   });
 
   const [showFilters, setShowFilters] = useState(false);
+
+  // Dynamic manufacturer/model data from AuctionsAPI
+  const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery();
+  const { data: models } = trpc.vehicles.models.useQuery(
+    { manufacturerId: filters.manufacturer_id! },
+    { enabled: !!filters.manufacturer_id }
+  );
   const searchType = detectSearchType(filters.search_query);
 
   const queryInput = useMemo(() => ({
@@ -250,6 +259,32 @@ export default function Catalogo() {
                 </SelectContent>
               </Select>
 
+              <Select onValueChange={(v) => setFilters(f => ({ ...f, manufacturer_id: v === "all" ? undefined : parseInt(v), model_id: undefined, page: 1 }))}>
+                <SelectTrigger className="bg-[#141E30] border-[#243048] text-slate-300">
+                  <SelectValue placeholder="Marca" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
+                  <SelectItem value="all">Todas las marcas</SelectItem>
+                  {((manufacturers as any)?.data || manufacturers as any || [])?.slice(0, 60).map((m: any) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {filters.manufacturer_id && (
+                <Select onValueChange={(v) => setFilters(f => ({ ...f, model_id: v === "all" ? undefined : parseInt(v), page: 1 }))}>
+                  <SelectTrigger className="bg-[#141E30] border-[#243048] text-slate-300">
+                    <SelectValue placeholder="Modelo" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
+                    <SelectItem value="all">Todos los modelos</SelectItem>
+                    {((models as any)?.data || models as any || [])?.map((m: any) => (
+                      <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select onValueChange={(v) => setFilters(f => ({ ...f, body_type: v === "all" ? undefined : parseInt(v), page: 1 }))}>
                 <SelectTrigger className="bg-[#141E30] border-[#243048] text-slate-300">
                   <SelectValue placeholder="Tipo de vehículo" />
@@ -284,7 +319,7 @@ export default function Catalogo() {
                 className="bg-[#141E30] border-[#243048] text-white placeholder:text-slate-500"
                 onChange={(e) => setFilters(f => ({ ...f, bid_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))}
               />
-              <Button onClick={() => setFilters({ search_query: "", domain_id: undefined as number | undefined, from_year: undefined as number | undefined, to_year: undefined as number | undefined, bid_price_from: undefined as number | undefined, bid_price_to: undefined as number | undefined, body_type: undefined as number | undefined, page: 1, per_page: 24 })} variant="outline" className="border-[#243048] text-slate-400 hover:text-white col-span-2 md:col-span-1">
+              <Button onClick={() => setFilters({ search_query: "", domain_id: undefined as number | undefined, manufacturer_id: undefined as number | undefined, model_id: undefined as number | undefined, from_year: undefined as number | undefined, to_year: undefined as number | undefined, bid_price_from: undefined as number | undefined, bid_price_to: undefined as number | undefined, body_type: undefined as number | undefined, page: 1, per_page: 24 })} variant="outline" className="border-[#243048] text-slate-400 hover:text-white col-span-2 md:col-span-1">
                 <X className="w-4 h-4 mr-1" /> Limpiar Filtros
               </Button>
             </motion.div>

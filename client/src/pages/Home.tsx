@@ -1,8 +1,9 @@
-import { Link } from "wouter";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Car, Calculator, TrendingUp, Shield, Clock, CheckCircle, ChevronRight, Zap } from "lucide-react";
+import { ArrowRight, Car, Calculator, TrendingUp, Shield, Clock, CheckCircle, ChevronRight, Zap, Gauge, Fuel, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { Link } from "wouter";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -31,7 +32,33 @@ const steps = [
   { num: "04", title: "Recibe tu Vehículo", desc: "Nosotros manejamos todo. Tú recibes tu vehículo en Guatemala." },
 ];
 
+function normalizeVehicle(v: any) {
+  const lot = v.lots?.[0] || {};
+  const domainId = lot.domain?.id ?? v.domain_id;
+  const images = lot.images?.normal || lot.images?.small || [];
+  return {
+    id: v.id,
+    year: v.year,
+    make: v.manufacturer?.name ?? v.make ?? "",
+    model: v.model?.name ?? v.model ?? "",
+    bidPrice: lot.bid ?? lot.final_bid ?? v.bid_price ?? 0,
+    buyNowPrice: lot.buy_now_price ?? v.buy_now_price ?? null,
+    image: images[0] || v.image_url || null,
+    platform: domainId === 3 ? "Copart" : "IAAI",
+    platformColor: domainId === 3 ? "#00C8E0" : "#F97316",
+    state: lot.location?.state?.code ?? v.state_code ?? "FL",
+    odometer: lot.odometer?.mi ?? v.odometer ?? null,
+    damage: lot.damage?.main?.name ?? v.damage_type ?? null,
+    body: v.body_type?.name ?? v.body_type ?? null,
+    lot: lot.lot ?? v.lot_number ?? v.id,
+  };
+}
+
 export default function Home() {
+  const featuredInput = useMemo(() => ({ per_page: 8, exclude_expired_auctions: 1, bid_price_to: 15000 }), []);
+  const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput);
+  const featuredVehicles = (featuredData as any)?.data?.slice(0, 6) || [];
+
   return (
     <div className="min-h-screen bg-[#080D18]">
       {/* HERO */}
@@ -204,6 +231,69 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* FEATURED VEHICLES */}
+      {featuredVehicles.length > 0 && (
+        <section className="py-24 bg-[#080D18]">
+          <div className="container">
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+              <div>
+                <motion.p variants={fadeUp} className="text-[#00C8E0] text-sm font-semibold uppercase tracking-widest mb-3">En Subasta Ahora</motion.p>
+                <motion.h2 variants={fadeUp} className="font-display text-5xl md:text-6xl text-white">
+                  VEHÍCULOS <span className="text-[#F97316]">DESTACADOS</span>
+                </motion.h2>
+              </div>
+              <motion.div variants={fadeUp}>
+                <Link href="/catalogo">
+                  <Button variant="outline" className="border-[#243048] text-slate-300 hover:text-white mt-4 md:mt-0">
+                    Ver Catálogo Completo <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              </motion.div>
+            </motion.div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredVehicles.map((raw: any, i: number) => {
+                const v = normalizeVehicle(raw);
+                return (
+                  <motion.div key={v.id || i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                    className="bg-[#141E30] border border-[#243048] rounded-2xl overflow-hidden group hover:border-[#00C8E0]/30 transition-colors">
+                    <div className="relative aspect-video bg-[#0F1624] overflow-hidden">
+                      {v.image ? (
+                        <img src={v.image} alt={`${v.year} ${v.make} ${v.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center"><Car className="w-12 h-12 text-[#243048]" /></div>
+                      )}
+                      <div className="absolute top-3 left-3 flex gap-2">
+                        <span className="px-2 py-1 rounded text-xs font-bold text-[#080D18]" style={{ backgroundColor: v.platformColor }}>{v.platform}</span>
+                        {v.buyNowPrice && <span className="px-2 py-1 rounded text-xs font-bold bg-[#F97316] text-white">Buy Now</span>}
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-white text-lg leading-tight mb-1">{v.year} {v.make} {v.model}</h3>
+                      <div className="flex items-center gap-3 text-xs text-slate-400 mb-3">
+                        {v.odometer && <span className="flex items-center gap-1"><Gauge className="w-3 h-3" />{v.odometer.toLocaleString()} mi</span>}
+                        {v.state && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{v.state}</span>}
+                        {v.damage && <span className="text-yellow-500/80">{v.damage}</span>}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-400 text-xs">Precio subasta</p>
+                          <p className="text-[#00C8E0] font-bold text-xl">${v.bidPrice.toLocaleString()}</p>
+                        </div>
+                        <Link href={`/cotizador?platform=${v.platform.toLowerCase()}&state=${v.state}&price=${v.bidPrice}&title=${encodeURIComponent(`${v.year} ${v.make} ${v.model}`)}&body=${encodeURIComponent(v.body || "")}`}>
+                          <Button size="sm" className="bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-bold text-xs btn-press">
+                            <Calculator className="w-3 h-3 mr-1" /> Cotizar
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="py-24 bg-[#080D18] relative overflow-hidden">
