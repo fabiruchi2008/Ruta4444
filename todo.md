@@ -74,13 +74,13 @@
 - [x] Notificaciones al owner implementadas con notifyOwner en cada cotización y contacto (incluye código de tracking)
 
 ## Reestructura Calculadora v2
-- [ ] Quitar página /cotizador como ruta separada
-- [ ] Quitar enlace "Cotizador" del Navbar
-- [ ] Quitar planes de servicio $500 de Home y Servicios
-- [ ] Integrar calculadora automática dentro de VehicleDetail (cada lote)
-- [ ] Cálculo no modificable por el cliente
-- [ ] Impuestos Guatemala: 32% sobre CIF (no 12%+aranceles separados)
-- [ ] Gastos varios: Q5,000 fijos
-- [ ] Ganancia Ruta Cars $500 oculta (repartida en precio final, no visible)
-- [ ] Actualizar importCalculator.ts con nueva lógica
-- [ ] Rediseñar catálogo estilo AutoBidMaster con filtros de precio
+- [x] Quitar página /cotizador como ruta separada (eliminado Cotizador.tsx y ruta)
+- [x] Quitar enlace "Cotizador" del Navbar (reemplazado por "Ver Catálogo" → /catalogo)
+- [x] Quitar planes de servicio $500 de Home y Servicios
+- [x] Integrar calculadora automática dentro de VehicleDetail (cada lote)
+- [x] Cálculo no modificable por el cliente (solo lectura, no hay inputs editables)
+- [x] Impuestos Guatemala: 32% sobre CIF (unificado)
+- [x] Gastos varios: Q5,000 fijos
+- [x] Ganancia Ruta Cars oculta (mín Q10,000 calculada por IA, solo se muestra $500 Servicio)
+- [x] Actualizar importCalculator.ts con nueva lógica
+- [x] Rediseñar catálogo estilo AutoBidMaster con filtros de precio

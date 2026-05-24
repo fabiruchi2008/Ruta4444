@@ -77,18 +77,14 @@ export default function Navbar() {
                 </Button>
               </Link>
             )}
-            <a
-              href="https://wa.me/50231220803?text=Hola,%20me%20interesa%20importar%20un%20vehículo"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Link href="/catalogo">
               <Button
                 size="sm"
                 className="bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-semibold btn-press glow-cyan"
               >
-                Cotizar Ahora
+                Ver Catálogo
               </Button>
-            </a>
+            </Link>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -132,16 +128,11 @@ export default function Navbar() {
                 </Link>
               )}
               <div className="pt-2 border-t border-[#243048]/40 mt-2">
-                <a
-                  href="https://wa.me/50231220803?text=Hola,%20me%20interesa%20importar%20un%20vehículo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
+                <Link href="/catalogo" className="block">
                   <Button className="w-full bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-semibold">
-                    Cotizar Ahora
+                    Ver Catálogo
                   </Button>
-                </a>
+                </Link>
               </div>
             </div>
           </motion.div>
