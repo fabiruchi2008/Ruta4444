@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Filter, X, Car, Fuel, Gauge, Calendar, MapPin, ExternalLink, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -177,6 +177,13 @@ export default function Catalogo() {
     per_page: 24,
   });
 
+  // Debounced search query — only fires API call 600ms after user stops typing
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(filters.search_query), 600);
+    return () => clearTimeout(t);
+  }, [filters.search_query]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [makeSearch, setMakeSearch] = useState("");
 
@@ -194,20 +201,22 @@ export default function Catalogo() {
     return list.filter((m: any) => m.name?.toLowerCase().includes(makeSearch.toLowerCase()));
   }, [manufacturers, makeSearch]);
 
-  const searchType = detectSearchType(filters.search_query);
+  // Use debounced search for API calls
+  const debouncedFilters = useMemo(() => ({ ...filters, search_query: debouncedSearch }), [filters, debouncedSearch]);
+  const searchType = detectSearchType(debouncedSearch);
 
   const queryInput = useMemo(() => ({
-    ...filters,
+    ...debouncedFilters,
     exclude_expired_auctions: 1,
-  }), [filters]);
+  }), [debouncedFilters]);
 
   const vinQuery = trpc.vehicles.searchByVin.useQuery(
-    { vin: filters.search_query.trim() },
-    { enabled: searchType === "vin" && filters.search_query.trim().length === 17 }
+    { vin: debouncedSearch.trim() },
+    { enabled: searchType === "vin" && debouncedSearch.trim().length === 17 }
   );
   const lotQuery = trpc.vehicles.searchByLot.useQuery(
-    { lot: filters.search_query.trim() },
-    { enabled: searchType === "lot" && filters.search_query.trim().length >= 6 }
+    { lot: debouncedSearch.trim() },
+    { enabled: searchType === "lot" && debouncedSearch.trim().length >= 6 }
   );
   const generalQuery = trpc.vehicles.search.useQuery(queryInput, { enabled: searchType === "general" });
 

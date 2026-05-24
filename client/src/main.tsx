@@ -8,7 +8,24 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Cache results for 5 minutes globally to avoid hammering AuctionsAPI
+      staleTime: 5 * 60 * 1000,
+      // Don't refetch when window regains focus — prevents 429 on tab switch
+      refetchOnWindowFocus: false,
+      // Don't retry on 4xx errors (429 = rate limit, 401 = unauth)
+      retry: (failureCount, error) => {
+        if (error instanceof TRPCClientError) {
+          const msg = error.message || "";
+          if (msg.includes("429") || msg.includes("401") || msg.includes("403")) return false;
+        }
+        return failureCount < 1;
+      },
+    },
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;

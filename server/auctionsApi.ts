@@ -12,7 +12,31 @@ function getApiKey(): string {
   return key;
 }
 
-async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+// ─── In-memory cache to reduce API calls and avoid rate limiting ──────────────
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+const cache = new Map<string, CacheEntry<unknown>>();
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { cache.delete(key); return null; }
+  return entry.data as T;
+}
+
+function setCached<T>(key: string, data: T, ttlMs: number): void {
+  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  // Prevent unbounded growth
+  if (cache.size > 500) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey) cache.delete(firstKey);
+  }
+}
+
+// ─── Rate-limit aware fetch with retry ────────────────────────────────────────
+async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>, cacheTtlMs = 0): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
@@ -21,17 +45,39 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
       }
     }
   }
-  const res = await fetch(url.toString(), {
-    headers: {
-      "x-api-key": getApiKey(),
-      "accept": "application/json",
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`AuctionsAPI error ${res.status}: ${text.slice(0, 200)}`);
+  const cacheKey = url.toString();
+
+  // Return cached result if available
+  if (cacheTtlMs > 0) {
+    const cached = getCached<T>(cacheKey);
+    if (cached !== null) return cached;
   }
-  return res.json() as Promise<T>;
+
+  // Retry up to 3 times on 429 with exponential backoff
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+    }
+    const res = await fetch(url.toString(), {
+      headers: {
+        "x-api-key": getApiKey(),
+        "accept": "application/json",
+      },
+    });
+    if (res.status === 429) {
+      lastError = new Error(`AuctionsAPI error 429: demasiadas solicitudes, intenta de nuevo en unos segundos`);
+      continue; // retry
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`AuctionsAPI error ${res.status}: ${text.slice(0, 200)}`);
+    }
+    const data = await res.json() as T;
+    if (cacheTtlMs > 0) setCached(cacheKey, data, cacheTtlMs);
+    return data;
+  }
+  throw lastError ?? new Error("AuctionsAPI: máximo de reintentos alcanzado");
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -156,6 +202,10 @@ export interface SearchCarsParams {
 
 // ─── API functions ─────────────────────────────────────────────────────────────
 
+const CACHE_5MIN  = 5 * 60 * 1000;   // 5 minutes — search results
+const CACHE_1HOUR = 60 * 60 * 1000;  // 1 hour   — static lists (manufacturers, models, damages)
+const CACHE_10MIN = 10 * 60 * 1000;  // 10 minutes — vehicle detail
+
 export async function searchCars(params: SearchCarsParams = {}): Promise<AuctionListResponse> {
   const { search_query, simple_paginate, ...rest } = params;
   const p: Record<string, string | number | undefined> = {
@@ -168,36 +218,34 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   // AuctionsAPI: 'search_query' = VIN or lot number; 'name' = free-text title/make/model search
   if (search_query && search_query.trim()) {
     const q = search_query.trim();
-    // If it looks like a VIN (17 chars) or lot number (all digits), use search_query
     if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(q) || /^\d{6,12}$/.test(q)) {
       p.search_query = q;
     } else {
-      // Free-text search (make, model, brand name like Mercedes)
       p.name = q;
     }
   }
-  return apiFetch<AuctionListResponse>("/cars", p);
+  return apiFetch<AuctionListResponse>("/cars", p, CACHE_5MIN);
 }
 
 export async function searchByVin(vin: string): Promise<{ data: AuctionVehicle }> {
-  return apiFetch<{ data: AuctionVehicle }>(`/search-vin/${encodeURIComponent(vin)}`);
+  return apiFetch<{ data: AuctionVehicle }>(`/search-vin/${encodeURIComponent(vin)}`, undefined, CACHE_10MIN);
 }
 
 export async function searchByLot(lot: string, domain?: "copart_com" | "iaai_com"): Promise<{ data: AuctionVehicle }> {
   const path = domain ? `/search-lot/${lot}/${domain}` : `/search-lot/${lot}`;
-  return apiFetch<{ data: AuctionVehicle }>(path);
+  return apiFetch<{ data: AuctionVehicle }>(path, undefined, CACHE_10MIN);
 }
 
 export async function getManufacturers(): Promise<{ data: AuctionManufacturer[] }> {
-  return apiFetch<{ data: AuctionManufacturer[] }>("/manufacturers/cars");
+  return apiFetch<{ data: AuctionManufacturer[] }>("/manufacturers/cars", undefined, CACHE_1HOUR);
 }
 
 export async function getModels(manufacturerId: number): Promise<{ data: AuctionModel[] }> {
-  return apiFetch<{ data: AuctionModel[] }>(`/models/${manufacturerId}/cars`);
+  return apiFetch<{ data: AuctionModel[] }>(`/models/${manufacturerId}/cars`, undefined, CACHE_1HOUR);
 }
 
 export async function getDamages(): Promise<{ data: Array<{ id: number; name: string }> }> {
-  return apiFetch<{ data: Array<{ id: number; name: string }> }>("/usa/damages");
+  return apiFetch<{ data: Array<{ id: number; name: string }> }>("/usa/damages", undefined, CACHE_1HOUR);
 }
 
 // ─── Helper to get the primary image of a vehicle ─────────────────────────────
