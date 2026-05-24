@@ -98,7 +98,7 @@ export interface AuctionVehicle {
 export interface AuctionListResponse {
   data: AuctionVehicle[];
   links: { first: string; last: string | null; prev: string | null; next: string | null };
-  meta: { current_page: number; from: number | null; path: string; per_page: number; to: number | null };
+  meta: { current_page: number; from: number | null; last_page: number; path: string; per_page: number; to: number | null; total: number };
 }
 
 export interface AuctionManufacturer {

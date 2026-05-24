@@ -215,7 +215,7 @@ export default function Catalogo() {
   const error = searchType === "vin" ? vinQuery.error : searchType === "lot" ? lotQuery.error : generalQuery.error;
   const rawData = searchType === "vin" ? vinQuery.data : searchType === "lot" ? lotQuery.data : generalQuery.data;
   const vehicles = (rawData as any)?.data || (Array.isArray(rawData) ? rawData : []);
-  const total = (rawData as any)?.meta?.to ?? vehicles.length;
+  const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
 
   function handleQuote(rawVehicle: any) {
     const vehicle = normalizeVehicle(rawVehicle);
@@ -385,23 +385,31 @@ export default function Catalogo() {
 
         {/* Pagination */}
         {!isLoading && vehicles.length > 0 && (
-          <div className="flex items-center justify-center gap-4 mt-10">
-            <Button
-              variant="outline"
-              className="border-[#243048] text-slate-300 hover:text-white"
-              disabled={filters.page <= 1}
-              onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
-            >
-              Anterior
-            </Button>
-            <span className="text-slate-400 text-sm">Página {filters.page}</span>
-            <Button
-              variant="outline"
-              className="border-[#243048] text-slate-300 hover:text-white"
-              onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
-            >
-              Siguiente
-            </Button>
+          <div className="flex flex-col items-center gap-3 mt-10">
+            <p className="text-slate-500 text-sm">
+              Mostrando {((filters.page - 1) * filters.per_page) + 1}–{Math.min(filters.page * filters.per_page, total)} de {total.toLocaleString()} vehículos
+            </p>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                className="border-[#243048] text-slate-300 hover:text-white"
+                disabled={filters.page <= 1}
+                onClick={() => { setFilters(f => ({ ...f, page: f.page - 1 })); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              >
+                ← Anterior
+              </Button>
+              <span className="text-slate-300 text-sm font-medium px-4 py-2 bg-[#141E30] border border-[#243048] rounded-lg">
+                Página {filters.page} de {Math.ceil(total / filters.per_page).toLocaleString()}
+              </span>
+              <Button
+                variant="outline"
+                className="border-[#243048] text-slate-300 hover:text-white"
+                disabled={filters.page >= Math.ceil(total / filters.per_page)}
+                onClick={() => { setFilters(f => ({ ...f, page: f.page + 1 })); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              >
+                Siguiente →
+              </Button>
+            </div>
           </div>
         )}
       </div>

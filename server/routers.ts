@@ -269,8 +269,11 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Generate unique tracking code: RC-XXXXXX
+        const trackingCode = `RC-${Date.now().toString(36).toUpperCase().slice(-6)}`;
         await db.insert(quotes).values({
           ...input,
+          trackingCode,
           auctionPrice: String(input.auctionPrice),
           platformFees: input.platformFees != null ? String(input.platformFees) : undefined,
           usaTransport: input.usaTransport != null ? String(input.usaTransport) : undefined,
@@ -285,10 +288,10 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
           exchangeRate: input.exchangeRate != null ? String(input.exchangeRate) : undefined,
         });
         await notifyOwner({
-          title: `Nueva Cotización - ${input.vehicleTitle || "Vehículo"}`,
-          content: `Cliente: ${input.clientName} | Tel: ${input.clientPhone} | Vehículo: ${input.vehicleTitle || "N/A"} | Total: $${input.totalUSD?.toFixed(2) || "N/A"} USD`,
+          title: `🚗 Nueva Cotización #${trackingCode} - ${input.vehicleTitle || "Vehículo"}`,
+          content: `Cliente: ${input.clientName} | Tel: ${input.clientPhone} | Vehículo: ${input.vehicleTitle || "N/A"} | Total: $${input.totalUSD?.toFixed(2) || "N/A"} USD | Código: ${trackingCode}`,
         }).catch(() => {});
-        return { success: true };
+        return { success: true, trackingCode };
       }),
 
     list: adminProcedure
@@ -311,6 +314,33 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await db.update(quotes).set({ status: input.status, notes: input.notes }).where(eq(quotes.id, input.id));
         return { success: true };
+      }),
+
+    // Public tracking — only returns safe fields (no admin notes)
+    track: publicProcedure
+      .input(z.object({ trackingCode: z.string().min(3) }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await db.select({
+          id: quotes.id,
+          trackingCode: quotes.trackingCode,
+          clientName: quotes.clientName,
+          vehicleTitle: quotes.vehicleTitle,
+          vehicleYear: quotes.vehicleYear,
+          vehicleMake: quotes.vehicleMake,
+          vehicleModel: quotes.vehicleModel,
+          platform: quotes.platform,
+          auctionPrice: quotes.auctionPrice,
+          totalUSD: quotes.totalUSD,
+          totalGTQ: quotes.totalGTQ,
+          status: quotes.status,
+          notes: quotes.notes,
+          createdAt: quotes.createdAt,
+          updatedAt: quotes.updatedAt,
+        }).from(quotes).where(eq(quotes.trackingCode, input.trackingCode)).limit(1);
+        if (!result[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Código de seguimiento no encontrado" });
+        return result[0];
       }),
   }),
 
