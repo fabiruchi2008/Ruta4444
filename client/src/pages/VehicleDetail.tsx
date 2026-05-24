@@ -173,7 +173,7 @@ export default function VehicleDetail() {
             {vehicle.engine && (
               <div className="bg-[#141E30] border border-[#243048] rounded-xl p-4">
                 <p className="text-slate-400 text-xs mb-1">Motor</p>
-                <p className="text-white text-sm">{vehicle.engine.name}</p>
+                <p className="text-white text-sm">{typeof vehicle.engine === 'string' ? vehicle.engine : (vehicle.engine as any)?.name ?? ''}</p>
               </div>
             )}
           </div>
