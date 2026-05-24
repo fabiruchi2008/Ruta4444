@@ -39,9 +39,9 @@ describe("IAAI fees", () => {
     expect(fees.total).toBeGreaterThan(0);
   });
 
-  it("includes virtual bid fee for Autobid Master", () => {
+  it("includes virtual bid fee for Autobid Master ($75)", () => {
     const fees = calculateIAAIFees(2000);
-    expect(fees.virtualBidFee).toBeGreaterThan(0);
+    expect(fees.virtualBidFee).toBe(75);
   });
 });
 
@@ -57,9 +57,9 @@ describe("Vehicle size detection", () => {
     expect(size.size).toBe("large");
   });
 
-  it("detects small/medium size from Sedan", () => {
+  it("detects small size from Sedan", () => {
     const size = detectVehicleSize("Sedan");
-    expect(["small", "medium"]).toContain(size.size);
+    expect(size.size).toBe("small");
     expect(size.needsManualQuote).toBe(false);
   });
 
@@ -92,92 +92,138 @@ describe("Transport rate lookup", () => {
     const result = getTransportRate("TX", "medium");
     expect(result.rate).toBeGreaterThan(0);
   });
+
+  it("California rate is higher than Florida rate (distance)", () => {
+    const fl = getTransportRate("FL", "medium");
+    const ca = getTransportRate("CA", "medium");
+    expect(ca.rate).toBeGreaterThan(fl.rate);
+  });
 });
 
-describe("Full import cost calculation", () => {
+describe("Full import cost calculation (nueva lógica: 32% GT unificado)", () => {
+  const baseInput = {
+    auctionPrice: 5000,
+    platform: "copart" as const,
+    stateCode: "FL",
+    bodyType: "Sedan",
+    exchangeRate: 7.75,
+  };
+
   it("calculates total import cost for Copart Florida sedan at $5000", () => {
-    const result = calculateImportCost({
-      auctionPrice: 5000,
-      platform: "copart",
-      stateCode: "FL",
-      bodyType: "Sedan",
-      exchangeRate: 7.75,
-      customDutyRate: 0.20,
-    });
+    const result = calculateImportCost(baseInput);
     expect(result.auctionPrice).toBe(5000);
     expect(result.maritimeShipping).toBe(2800);
-    expect(result.rutaCarsService).toBe(500);
-    expect(result.totalUSD).toBeGreaterThan(5000);
-    expect(result.totalGTQ).toBeGreaterThan(result.totalUSD * 7);
+    expect(result.rutaCarsServiceUSD).toBe(500);
+    expect(result.finalPriceUSD).toBeGreaterThan(5000);
+    expect(result.finalPriceGTQ).toBeGreaterThan(result.finalPriceUSD * 7);
     expect(result.cifValue).toBeGreaterThan(0);
-    expect(result.customsDuty).toBeGreaterThan(0);
-    expect(result.vat).toBeGreaterThan(0);
   });
 
-  it("tracks minimum profit threshold of Q10000", () => {
-    const result = calculateImportCost({
-      auctionPrice: 5000,
-      platform: "copart",
-      stateCode: "FL",
-      bodyType: "SUV",
-      exchangeRate: 7.75,
-      customDutyRate: 0.20,
-    });
-    // meetsMinimumProfit is derived from Q10000 threshold
-    expect(typeof result.meetsMinimumProfit).toBe("boolean");
-    expect(result.suggestedSellingPriceGTQ).toBeGreaterThanOrEqual(result.totalGTQ + 10000);
+  it("applies 32% Guatemala tax on CIF value", () => {
+    const result = calculateImportCost(baseInput);
+    const expectedCif = result.auctionPrice + result.platformFees.total + result.usaTransport + result.maritimeShipping;
+    expect(result.cifValue).toBe(expectedCif);
+    expect(result.guatemalaTax).toBe(Math.round(expectedCif * 0.32));
+  });
+
+  it("miscExpensesGTQ is fixed at Q5,000", () => {
+    const result = calculateImportCost(baseInput);
+    expect(result.miscExpensesGTQ).toBe(5000);
+  });
+
+  it("Servicio Ruta Cars GT is $500 in breakdown (visible al cliente)", () => {
+    const result = calculateImportCost(baseInput);
+    const servicioItem = result.breakdown.find(b => b.label.includes("Ruta Cars"));
+    expect(servicioItem).toBeDefined();
+    expect(servicioItem?.amountUSD).toBe(500);
+  });
+
+  it("final price includes internal profit (min Q10,000) oculto", () => {
+    const result = calculateImportCost(baseInput);
+    const baseCostGTQ = result.totalCostUSD * result.exchangeRate + result.miscExpensesGTQ;
+    expect(result.finalPriceGTQ).toBeGreaterThanOrEqual(Math.round(baseCostGTQ) + 10000);
+  });
+
+  it("higher internalProfitGTQ produces higher final price", () => {
+    const r1 = calculateImportCost({ ...baseInput, internalProfitGTQ: 10000 });
+    const r2 = calculateImportCost({ ...baseInput, internalProfitGTQ: 20000 });
+    expect(r2.finalPriceGTQ).toBeGreaterThan(r1.finalPriceGTQ);
+    expect(r2.internalProfitGTQ).toBe(20000);
+  });
+
+  it("breakdown does NOT expose internal profit to client", () => {
+    const result = calculateImportCost(baseInput);
+    const labels = result.breakdown.map(b => b.label.toLowerCase());
+    expect(labels.some(l => l.includes("ganancia") || l.includes("profit") || l.includes("internal"))).toBe(false);
+  });
+
+  it("marks special vehicles (Van) as needing manual quote", () => {
+    const result = calculateImportCost({ ...baseInput, bodyType: "Van" });
+    expect(result.needsManualQuote).toBe(true);
   });
 
   it("calculates IAAI fees correctly", () => {
-    const result = calculateImportCost({
-      auctionPrice: 3000,
-      platform: "iaai",
-      stateCode: "TX",
-      bodyType: null,
-      exchangeRate: 7.75,
-      customDutyRate: 0.15,
-    });
-    expect(result.auctionPrice).toBe(3000);
-    expect(result.totalUSD).toBeGreaterThan(3000);
-  });
-
-  it("applies correct exchange rate to GTQ", () => {
-    const result = calculateImportCost({
-      auctionPrice: 5000,
-      platform: "copart",
-      stateCode: "FL",
-      bodyType: null,
-      exchangeRate: 7.75,
-      customDutyRate: 0.20,
-    });
-    // GTQ should be roughly totalUSD * exchangeRate
-    const ratio = result.totalGTQ / result.totalUSD;
-    expect(ratio).toBeGreaterThan(7);
-    expect(ratio).toBeLessThan(9);
+    const result = calculateImportCost({ ...baseInput, platform: "iaai" });
+    expect(result.auctionPrice).toBe(5000);
+    expect(result.platformFees.virtualBidFee).toBe(75);
+    expect(result.finalPriceUSD).toBeGreaterThan(5000);
   });
 
   it("CIF includes auction price, fees, transport and shipping", () => {
-    const result = calculateImportCost({
-      auctionPrice: 4000,
-      platform: "copart",
-      stateCode: "FL",
-      bodyType: "Sedan",
-      exchangeRate: 7.75,
-    });
+    const result = calculateImportCost({ ...baseInput, auctionPrice: 4000 });
     const expectedCIF = result.auctionPrice + result.platformFees.total + result.usaTransport + result.maritimeShipping;
     expect(result.cifValue).toBe(expectedCIF);
   });
 
-  it("VAT is 12% of CIF + duties", () => {
-    const result = calculateImportCost({
-      auctionPrice: 4000,
-      platform: "copart",
-      stateCode: "FL",
-      bodyType: "Sedan",
-      exchangeRate: 7.75,
-      customDutyRate: 0.20,
+  it("breakdown has all expected line items", () => {
+    const result = calculateImportCost(baseInput);
+    const labels = result.breakdown.map(b => b.label);
+    expect(labels.some(l => l.includes("Subasta"))).toBe(true);
+    expect(labels.some(l => l.includes("Fees") || l.includes("Copart") || l.includes("IAAI"))).toBe(true);
+    expect(labels.some(l => l.includes("Transporte"))).toBe(true);
+    expect(labels.some(l => l.includes("Shipping") || l.includes("Mar\u00edtimo"))).toBe(true);
+    expect(labels.some(l => l.includes("Impuesto") || l.includes("32%"))).toBe(true);
+    expect(labels.some(l => l.includes("Gastos"))).toBe(true);
+    expect(labels.some(l => l.includes("Ruta Cars"))).toBe(true);
+  });
+});
+
+// ─── auth.logout ─────────────────────────────────────────────────────────────
+import { appRouter } from "./routers";
+import { COOKIE_NAME } from "../shared/const";
+import type { TrpcContext } from "./_core/context";
+
+type CookieCall = { name: string; options: Record<string, unknown> };
+type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
+
+function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] } {
+  const clearedCookies: CookieCall[] = [];
+  const user: AuthenticatedUser = {
+    id: 1, openId: "sample-user", email: "sample@example.com", name: "Sample User",
+    loginMethod: "manus", role: "user", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(),
+  };
+  const ctx: TrpcContext = {
+    user,
+    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    res: {
+      clearCookie: (name: string, options: Record<string, unknown>) => {
+        clearedCookies.push({ name, options });
+      },
+    } as TrpcContext["res"],
+  };
+  return { ctx, clearedCookies };
+}
+
+describe("auth.logout", () => {
+  it("clears the session cookie and reports success", async () => {
+    const { ctx, clearedCookies } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.auth.logout();
+    expect(result).toEqual({ success: true });
+    expect(clearedCookies).toHaveLength(1);
+    expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
+    expect(clearedCookies[0]?.options).toMatchObject({
+      maxAge: -1, secure: true, sameSite: "none", httpOnly: true, path: "/",
     });
-    const expectedVAT = Math.round((result.cifValue + result.customsDuty) * 0.12);
-    expect(result.vat).toBe(expectedVAT);
   });
 });

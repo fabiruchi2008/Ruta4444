@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, X, Car, Fuel, Gauge, Calendar, MapPin, ExternalLink, Calculator } from "lucide-react";
+import { Search, Filter, X, Car, Fuel, Gauge, Calendar, MapPin, Calculator, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,7 +48,7 @@ function normalizeVehicle(vehicle: any) {
   return { ...vehicle, platform, platformLabel, platformColor, primaryImage, bidPrice, buyNowPrice, stateCode, odometer, fuelType, bodyType, make, model, damageType, lotNumber, domainId };
 }
 
-function VehicleCard({ vehicle: rawVehicle, onQuote }: { vehicle: any; onQuote: (v: any) => void }) {
+function VehicleCard({ vehicle: rawVehicle }: { vehicle: any }) {
   const vehicle = normalizeVehicle(rawVehicle);
   const { platform, platformLabel, platformColor, primaryImage, bidPrice, buyNowPrice } = vehicle;
 
@@ -135,18 +135,23 @@ function VehicleCard({ vehicle: rawVehicle, onQuote }: { vehicle: any; onQuote: 
             )}
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={() => onQuote(vehicle)}
-              size="sm"
-              className="flex-1 bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-semibold btn-press text-xs"
-            >
-              <Calculator className="w-3.5 h-3.5 mr-1" /> Cotizar
-            </Button>
-            <Link href={`/vehiculo/${vehicle.lotNumber || vehicle.id}`}>
-              <Button size="sm" variant="outline" className="border-[#243048] text-slate-300 hover:text-white hover:border-[#00C8E0]/50 btn-press">
-                <ExternalLink className="w-3.5 h-3.5" />
+            <Link href={`/vehiculo/${vehicle.lotNumber || vehicle.id}`} className="flex-1">
+              <Button
+                size="sm"
+                className="w-full bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-semibold btn-press text-xs"
+              >
+                <Calculator className="w-3.5 h-3.5 mr-1" /> Ver Costos
               </Button>
             </Link>
+            <a
+              href={`https://wa.me/50231220803?text=${encodeURIComponent(`Hola Ruta Cars GT, me interesa el vehículo ${vehicle.year} ${vehicle.make} ${vehicle.model} (Lote: ${vehicle.lotNumber || vehicle.id})`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="sm" variant="outline" className="border-[#243048] text-[#25D366] hover:text-white hover:border-[#25D366]/50 btn-press">
+                <MessageCircle className="w-3.5 h-3.5" />
+              </Button>
+            </a>
           </div>
         </div>
       </div>
@@ -228,11 +233,6 @@ export default function Catalogo() {
   const rawData = searchType === "vin" ? vinQuery.data : searchType === "lot" ? lotQuery.data : generalQuery.data;
   const vehicles = (rawData as any)?.data || (Array.isArray(rawData) ? rawData : []);
   const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
-
-  function handleQuote(rawVehicle: any) {
-    const vehicle = normalizeVehicle(rawVehicle);
-    window.location.href = `/cotizador?platform=${vehicle.platform}&state=${vehicle.stateCode}&price=${vehicle.bidPrice}&title=${encodeURIComponent(`${vehicle.year} ${vehicle.make} ${vehicle.model}`)}&body=${encodeURIComponent(vehicle.bodyType || "")}`;
-  }
 
   return (
     <div className="min-h-screen bg-[#080D18] pt-20">
@@ -390,7 +390,7 @@ export default function Catalogo() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {vehicles.map((vehicle: any, i: number) => (
-              <VehicleCard key={vehicle.id || vehicle.lot_number || i} vehicle={vehicle} onQuote={handleQuote} />
+              <VehicleCard key={vehicle.id || vehicle.lot_number || i} vehicle={vehicle} />
             ))}
           </div>
         )}

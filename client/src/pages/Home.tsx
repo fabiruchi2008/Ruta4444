@@ -20,14 +20,14 @@ const stats = [
 
 const features = [
   { icon: Car, color: "#00C8E0", title: "Catálogo en Tiempo Real", desc: "Accede a miles de vehículos de Copart e IAAI actualizados al instante. Filtra por marca, precio, condición y más." },
-  { icon: Calculator, color: "#F97316", title: "Cotizador Automático", desc: "Calcula el costo total de importación incluyendo fees, transporte, aranceles e IVA. Sin sorpresas." },
+  { icon: Calculator, color: "#F97316", title: "Calculadora Integrada", desc: "Cada vehículo incluye el costo total de importación calculado automáticamente: fees, transporte, impuestos y más." },
   { icon: TrendingUp, color: "#22C55E", title: "Análisis de Mercado GT", desc: "Comparamos precios del mercado guatemalteco para que veas el valor real del vehículo antes de importar." },
   { icon: Shield, color: "#A855F7", title: "Proceso Seguro", desc: "Manejamos todos los trámites aduanales, documentación y transporte desde USA hasta Guatemala." },
 ];
 
 const steps = [
   { num: "01", title: "Elige tu Vehículo", desc: "Navega nuestro catálogo de Copart e IAAI y encuentra el auto perfecto." },
-  { num: "02", title: "Cotiza al Instante", desc: "Nuestra calculadora te muestra el costo total de importación en segundos." },
+  { num: "02", title: "Ve el Costo Total", desc: "Cada vehículo muestra automáticamente el costo total puesto en Guatemala. Sin sorpresas." },
   { num: "03", title: "Confirma con Nosotros", desc: "Habla con un asesor por WhatsApp para confirmar tu compra." },
   { num: "04", title: "Recibe tu Vehículo", desc: "Nosotros manejamos todo. Tú recibes tu vehículo en Guatemala." },
 ];
@@ -96,9 +96,9 @@ export default function Home() {
                     Ver Catálogo <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                <Link href="/cotizador">
+                <Link href="/servicios">
                   <Button size="lg" variant="outline" className="border-[#243048] text-white hover:bg-[#141E30] hover:border-[#00C8E0]/50 px-8 btn-press">
-                    <Calculator className="w-5 h-5 mr-2" /> Cotizar Ahora
+                    <Shield className="w-5 h-5 mr-2" /> Cómo Funciona
                   </Button>
                 </Link>
               </motion.div>
@@ -116,7 +116,7 @@ export default function Home() {
               <div className="relative">
                 <div className="bg-[#141E30] border border-[#243048] rounded-2xl p-6 space-y-4 shadow-2xl">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-sm">Cotización Ejemplo</span>
+                    <span className="text-slate-400 text-sm">Ejemplo de Importación</span>
                     <span className="px-2 py-1 rounded-full bg-[#22C55E]/10 text-[#22C55E] text-xs font-medium">✓ Buena Inversión</span>
                   </div>
                   <div>
@@ -129,7 +129,8 @@ export default function Home() {
                       { label: "Fees Copart", value: "$699", color: "text-slate-300" },
                       { label: "Transporte USA", value: "$750", color: "text-slate-300" },
                       { label: "Shipping Marítimo", value: "$2,800", color: "text-slate-300" },
-                      { label: "Aranceles + IVA", value: "$3,240", color: "text-slate-300" },
+                      { label: "Impuestos Guatemala (32%)", value: "$3,808", color: "text-slate-300" },
+                      { label: "Gastos Varios", value: "$645", color: "text-slate-300" },
                       { label: "Servicio Ruta Cars", value: "$500", color: "text-[#F97316]" },
                     ].map((item) => (
                       <div key={item.label} className="flex justify-between items-center py-1.5 border-b border-[#243048]/50 last:border-0">
@@ -148,15 +149,12 @@ export default function Home() {
                       <span className="text-slate-300 font-medium">Q127,790 GTQ</span>
                     </div>
                   </div>
-                  <div className="bg-[#22C55E]/10 border border-[#22C55E]/20 rounded-xl p-4">
-                    <div className="flex justify-between items-center">
+                  <div className="bg-[#00C8E0]/10 border border-[#00C8E0]/20 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-[#00C8E0] flex-shrink-0" />
                       <div>
-                        <p className="text-[#22C55E] font-semibold text-sm">Precio Mercado GT</p>
-                        <p className="text-white font-bold text-lg">Q155,000 GTQ</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[#22C55E] font-semibold text-sm">Tu Ganancia</p>
-                        <p className="text-[#22C55E] font-bold text-xl">+Q27,210</p>
+                        <p className="text-[#00C8E0] font-semibold text-sm">Precio Final Puesto en Guatemala</p>
+                        <p className="text-white font-bold text-lg">Todo incluido · Sin sorpresas</p>
                       </div>
                     </div>
                   </div>
@@ -285,9 +283,9 @@ export default function Home() {
                           <p className="text-slate-400 text-xs">Precio subasta</p>
                           <p className="text-[#00C8E0] font-bold text-xl">${v.bidPrice.toLocaleString()}</p>
                         </div>
-                        <Link href={`/cotizador?platform=${v.platform.toLowerCase()}&state=${v.state}&price=${v.bidPrice}&title=${encodeURIComponent(`${v.year} ${v.make} ${v.model}`)}&body=${encodeURIComponent(v.body || "")}`}>
+                        <Link href={`/vehiculo/${v.lot || v.id}`}>
                           <Button size="sm" className="bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-bold text-xs btn-press">
-                            <Calculator className="w-3 h-3 mr-1" /> Cotizar
+                            <Calculator className="w-3 h-3 mr-1" /> Ver Costos
                           </Button>
                         </Link>
                       </div>
@@ -308,7 +306,7 @@ export default function Home() {
         <div className="container relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#F97316]/10 border border-[#F97316]/20 text-[#F97316] text-sm font-medium mb-6">
-              <Zap className="w-4 h-4" /> Cotización en menos de 30 segundos
+              <Zap className="w-4 h-4" /> Costos de importación calculados automáticamente
             </div>
             <h2 className="font-display text-5xl md:text-7xl text-white mb-6">
               EMPIEZA A <span className="text-[#00C8E0]">IMPORTAR</span><br />HOY MISMO

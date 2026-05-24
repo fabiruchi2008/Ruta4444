@@ -121,18 +121,19 @@ export const appRouter = router({
         platform: z.enum(["copart", "iaai"]),
         stateCode: z.string().min(2).max(3),
         bodyType: z.string().nullable().optional(),
-        customDutyRate: z.number().min(0.15).max(0.25).optional(),
       }))
       .query(async ({ input }) => {
         const exchangeRate = parseFloat(await getSetting("exchange_rate", "7.75"));
-        const customDutyRate = input.customDutyRate ?? parseFloat(await getSetting("custom_duty_rate", "0.20"));
+        const minimumProfitGTQ = parseFloat(await getSetting("minimum_profit_gtq", "10000"));
+        // La ganancia interna se calcula automáticamente: mínimo Q10,000
+        // El cliente NUNCA ve este valor, solo ve $500 de "Servicio Ruta Cars GT"
         return calculateImportCost({
           auctionPrice: input.auctionPrice,
           platform: input.platform,
           stateCode: input.stateCode,
           bodyType: input.bodyType ?? null,
           exchangeRate,
-          customDutyRate,
+          internalProfitGTQ: minimumProfitGTQ,
         });
       }),
 

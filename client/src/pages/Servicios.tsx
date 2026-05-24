@@ -16,22 +16,16 @@ const steps = [
   { icon: Car, color: "#00C8E0", num: "06", title: "Entrega en Guatemala", desc: "Recibes tu vehículo en Guatemala con toda la documentación en regla. Listo para plaquear y circular.", time: "1-2 días" },
 ];
 
-const packages = [
-  {
-    name: "Básico",
-    price: "$500",
-    color: "#00C8E0",
-    features: ["Búsqueda en catálogo", "Cotización automática", "Compra en subasta", "Transporte a puerto", "Shipping marítimo", "Trámites aduanales básicos"],
-    notIncluded: ["Reparación del vehículo", "Entrega a domicilio"],
-  },
-  {
-    name: "Premium",
-    price: "Consultar",
-    color: "#F97316",
-    popular: true,
-    features: ["Todo lo del plan Básico", "Análisis de mercado IA", "Asesoría personalizada", "Seguimiento en tiempo real", "Entrega a domicilio GT", "Soporte post-entrega 30 días"],
-    notIncluded: [],
-  },
+const included = [
+  "Búsqueda y selección en catálogo Copart e IAAI",
+  "Calculadora automática de costos de importación",
+  "Compra en subasta vía AutoBid Master",
+  "Transporte interno USA hasta puerto de embarque",
+  "Shipping marítimo a Puerto Quetzal",
+  "Trámites aduanales y pago de impuestos",
+  "Seguimiento de tu vehículo en tiempo real",
+  "Asesoría personalizada por WhatsApp",
+  "Entrega con documentación completa en Guatemala",
 ];
 
 export default function Servicios() {
@@ -83,51 +77,36 @@ export default function Servicios() {
         </div>
       </section>
 
-      {/* Packages */}
+      {/* What's Included */}
       <section className="py-20 bg-[#0F1624]">
         <div className="container">
           <div className="text-center mb-12">
-            <h2 className="font-display text-4xl md:text-5xl text-white mb-4">PAQUETES DE <span className="text-[#F97316]">SERVICIO</span></h2>
-            <p className="text-slate-400">Elige el paquete que mejor se adapte a tus necesidades</p>
+            <h2 className="font-display text-4xl md:text-5xl text-white mb-4">¿QUÉ <span className="text-[#00C8E0]">INCLUYE</span> EL SERVICIO?</h2>
+            <p className="text-slate-400">Todo lo que necesitas para importar tu vehículo, en un solo servicio</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {packages.map((pkg) => (
-              <motion.div
-                key={pkg.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className={`bg-[#141E30] border rounded-2xl p-6 relative ${pkg.popular ? "border-[#F97316]/40" : "border-[#243048]"}`}
-              >
-                {pkg.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F97316] text-white text-xs font-bold px-4 py-1 rounded-full">
-                    MÁS POPULAR
-                  </div>
-                )}
-                <div className="mb-4">
-                  <h3 className="font-display text-2xl text-white">{pkg.name}</h3>
-                  <p className="text-3xl font-bold mt-1" style={{ color: pkg.color }}>{pkg.price}</p>
-                  {pkg.name === "Básico" && <p className="text-slate-400 text-xs mt-1">Por vehículo importado</p>}
-                </div>
-                <ul className="space-y-2 mb-6">
-                  {pkg.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
-                      <CheckCircle className="w-4 h-4 text-[#22C55E] flex-shrink-0" />{f}
-                    </li>
-                  ))}
-                  {pkg.notIncluded.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-slate-500">
-                      <span className="w-4 h-4 flex-shrink-0 text-center text-slate-600">✕</span>{f}
-                    </li>
-                  ))}
-                </ul>
-                <a href="https://wa.me/50231220803?text=Hola,%20me%20interesa%20el%20paquete%20de%20importación" target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full btn-press" style={{ backgroundColor: pkg.color, color: "#080D18" }}>
-                    Consultar <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </a>
-              </motion.div>
-            ))}
+          <div className="max-w-2xl mx-auto bg-[#141E30] border border-[#243048] rounded-2xl p-8">
+            <ul className="space-y-4">
+              {included.map((item, i) => (
+                <motion.li
+                  key={item}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.07 }}
+                  className="flex items-center gap-3 text-slate-300"
+                >
+                  <CheckCircle className="w-5 h-5 text-[#00C8E0] flex-shrink-0" />
+                  <span>{item}</span>
+                </motion.li>
+              ))}
+            </ul>
+            <div className="mt-8 pt-6 border-t border-[#243048]">
+              <a href="https://wa.me/50231220803?text=Hola%20Ruta%20Cars%20GT%2C%20quiero%20importar%20un%20veh%C3%ADculo" target="_blank" rel="noopener noreferrer">
+                <Button size="lg" className="bg-[#25D366] hover:bg-[#1ea952] text-white font-bold w-full btn-press">
+                  <MessageCircle className="w-5 h-5 mr-2" /> Consultar por WhatsApp
+                </Button>
+              </a>
+            </div>
           </div>
         </div>
       </section>

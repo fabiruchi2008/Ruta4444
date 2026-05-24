@@ -47,7 +47,7 @@ export default function Footer() {
               {[
                 { href: "/", label: "Inicio" },
                 { href: "/catalogo", label: "Catálogo de Vehículos" },
-                { href: "/cotizador", label: "Cotizador" },
+                { href: "/seguimiento", label: "Seguimiento" },
                 { href: "/servicios", label: "Servicios" },
                 { href: "/contacto", label: "Contacto" },
               ].map((link) => (
@@ -70,7 +70,7 @@ export default function Footer() {
               {[
                 "Importación de Copart",
                 "Importación de IAAI",
-                "Cotización Automatizada",
+                "Calculadora de Importación",
                 "Trámites Aduanales",
                 "Transporte a Guatemala",
                 "Asesoría de Compra",

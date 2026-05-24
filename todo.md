@@ -72,3 +72,15 @@
 ## Pendientes de Siguiente Iteración
 - [x] Página de seguimiento de pedidos para clientes (/seguimiento) - búsqueda por código RC-XXXXXX, progreso visual, notas del asesor
 - [x] Notificaciones al owner implementadas con notifyOwner en cada cotización y contacto (incluye código de tracking)
+
+## Reestructura Calculadora v2
+- [ ] Quitar página /cotizador como ruta separada
+- [ ] Quitar enlace "Cotizador" del Navbar
+- [ ] Quitar planes de servicio $500 de Home y Servicios
+- [ ] Integrar calculadora automática dentro de VehicleDetail (cada lote)
+- [ ] Cálculo no modificable por el cliente
+- [ ] Impuestos Guatemala: 32% sobre CIF (no 12%+aranceles separados)
+- [ ] Gastos varios: Q5,000 fijos
+- [ ] Ganancia Ruta Cars $500 oculta (repartida en precio final, no visible)
+- [ ] Actualizar importCalculator.ts con nueva lógica
+- [ ] Rediseñar catálogo estilo AutoBidMaster con filtros de precio
