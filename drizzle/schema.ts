@@ -1,4 +1,13 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  decimal,
+  boolean,
+} from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,4 +34,86 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// ─── Cotizaciones ──────────────────────────────────────────────────────────────
+export const quotes = mysqlTable("quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  clientName: varchar("clientName", { length: 255 }).notNull(),
+  clientPhone: varchar("clientPhone", { length: 50 }).notNull(),
+  clientEmail: varchar("clientEmail", { length: 320 }),
+  vehicleId: varchar("vehicleId", { length: 100 }),
+  vehicleVin: varchar("vehicleVin", { length: 50 }),
+  vehicleLot: varchar("vehicleLot", { length: 50 }),
+  vehicleTitle: varchar("vehicleTitle", { length: 500 }),
+  vehicleYear: int("vehicleYear"),
+  vehicleMake: varchar("vehicleMake", { length: 100 }),
+  vehicleModel: varchar("vehicleModel", { length: 100 }),
+  vehicleBodyType: varchar("vehicleBodyType", { length: 100 }),
+  vehicleStateCode: varchar("vehicleStateCode", { length: 10 }),
+  platform: mysqlEnum("platform", ["copart", "iaai"]).notNull(),
+  auctionPrice: decimal("auctionPrice", { precision: 10, scale: 2 }).notNull(),
+  platformFees: decimal("platformFees", { precision: 10, scale: 2 }),
+  usaTransport: decimal("usaTransport", { precision: 10, scale: 2 }),
+  maritimeShipping: decimal("maritimeShipping", { precision: 10, scale: 2 }),
+  cifValue: decimal("cifValue", { precision: 10, scale: 2 }),
+  customsDuty: decimal("customsDuty", { precision: 10, scale: 2 }),
+  vat: decimal("vat", { precision: 10, scale: 2 }),
+  customsAdminFee: decimal("customsAdminFee", { precision: 10, scale: 2 }),
+  rutaCarsService: decimal("rutaCarsService", { precision: 10, scale: 2 }),
+  totalUSD: decimal("totalUSD", { precision: 10, scale: 2 }),
+  totalGTQ: decimal("totalGTQ", { precision: 12, scale: 2 }),
+  exchangeRate: decimal("exchangeRate", { precision: 8, scale: 4 }),
+  status: mysqlEnum("status", ["pending", "contacted", "in_process", "completed", "cancelled"]).default("pending").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = typeof quotes.$inferInsert;
+
+// ─── Configuración del Sistema ─────────────────────────────────────────────────
+export const settings = mysqlTable("settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Setting = typeof settings.$inferSelect;
+export type InsertSetting = typeof settings.$inferInsert;
+
+// ─── Vehículos Destacados ──────────────────────────────────────────────────────
+export const featuredVehicles = mysqlTable("featured_vehicles", {
+  id: int("id").autoincrement().primaryKey(),
+  vehicleId: varchar("vehicleId", { length: 100 }).notNull(),
+  vehicleVin: varchar("vehicleVin", { length: 50 }),
+  vehicleTitle: varchar("vehicleTitle", { length: 500 }),
+  vehicleYear: int("vehicleYear"),
+  vehicleMake: varchar("vehicleMake", { length: 100 }),
+  vehicleModel: varchar("vehicleModel", { length: 100 }),
+  vehicleImage: text("vehicleImage"),
+  platform: mysqlEnum("platform", ["copart", "iaai"]).notNull(),
+  bidPrice: decimal("bidPrice", { precision: 10, scale: 2 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FeaturedVehicle = typeof featuredVehicles.$inferSelect;
+export type InsertFeaturedVehicle = typeof featuredVehicles.$inferInsert;
+
+// ─── Contactos / Leads ─────────────────────────────────────────────────────────
+export const contacts = mysqlTable("contacts", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  message: text("message"),
+  source: varchar("source", { length: 100 }).default("website"),
+  status: mysqlEnum("status", ["new", "contacted", "converted", "closed"]).default("new").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = typeof contacts.$inferInsert;
