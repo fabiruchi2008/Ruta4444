@@ -1095,9 +1095,35 @@ export default function Catalogo() {
                   </button>
                 );
               })}
-              {(filters.sort || filters.buy_now) && (
+
+              {/* Filtros rápidos de condición */}
+              {[
+                { conditionId: 1, label: "✓ Enciende y Avanza", activeColor: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" },
+                { conditionId: 2, label: "⚡ Motor Enciende", activeColor: "bg-yellow-500/15 border-yellow-500/40 text-yellow-400" },
+              ].map(opt => {
+                const active = filters.condition === opt.conditionId;
+                return (
+                  <button
+                    key={`cond-${opt.conditionId}`}
+                    onClick={() => setFilters(f => ({
+                      ...f,
+                      condition: active ? undefined : opt.conditionId,
+                      page: 1,
+                    }))}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                      active
+                        ? opt.activeColor
+                        : "bg-[#111827] border-[#1F2D45] text-slate-500 hover:text-white hover:border-[#243048]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+
+              {(filters.sort || filters.buy_now || filters.condition !== undefined) && (
                 <button
-                  onClick={() => setFilters(f => ({ ...f, sort: undefined, order: undefined, buy_now: undefined, page: 1 }))}
+                  onClick={() => setFilters(f => ({ ...f, sort: undefined, order: undefined, buy_now: undefined, condition: undefined, page: 1 }))}
                   className="px-2.5 py-1 rounded-lg text-[10px] text-slate-600 hover:text-slate-300 border border-transparent hover:border-[#1F2D45] transition-all flex items-center gap-1 font-medium"
                 >
                   <RotateCcw className="w-2.5 h-2.5" /> Quitar
