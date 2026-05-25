@@ -19,6 +19,7 @@ import {
   calculateIAAIFees,
   detectVehicleSize,
   USA_TRANSPORT_RATES,
+  getGtMarketPrice,
 } from "./importCalculator";
 import { getDb } from "./db";
 import { quotes, contacts, settings, featuredVehicles } from "../drizzle/schema";
@@ -124,20 +125,33 @@ export const appRouter = router({
         stateCode: z.string().min(2).max(3),
         bodyType: z.string().nullable().optional(),
         city: z.string().nullable().optional(),
+        make: z.string().nullable().optional(),
+        model: z.string().nullable().optional(),
+        year: z.number().nullable().optional(),
       }))
       .query(async ({ input }) => {
-        const exchangeRate = parseFloat(await getSetting("exchange_rate", "7.75"));
-        // La ganancia interna ($500 USD) se incluye en el Transporte USA
-        // El cliente NUNCA ve este valor, solo ve $500 de "Servicio Ruta Cars GT"
-        return calculateImportCost({
+        const exchangeRate = parseFloat(await getSetting("exchange_rate", "7.80"));
+        const minProfitGTQ = parseFloat(await getSetting("min_profit_gtq", "10000"));
+        const result = await calculateImportCost({
           auctionPrice: input.auctionPrice,
           platform: input.platform,
           stateCode: input.stateCode,
           bodyType: input.bodyType ?? null,
           city: input.city ?? null,
+          make: input.make ?? null,
+          model: input.model ?? null,
+          year: input.year ?? null,
           exchangeRate,
-          internalProfitUSD: 500,
+          minProfitGTQ,
         });
+        // Si la ganancia es baja, notificar al dueño
+        if (result.needsManualQuote && result.manualQuoteReason === "low_profit") {
+          notifyOwner({
+            title: `⚠️ Ganancia Baja - ${input.make ?? ""} ${input.model ?? ""} ${input.year ?? ""}`,
+            content: `Precio subasta: $${input.auctionPrice} | Costo base: Q${result.finalPriceGTQ?.toLocaleString() ?? "?"} | Mercado GT: Q${result.gtMarketPriceGTQ?.toLocaleString() ?? "N/A"} | Ganancia estimada: Q${result.estimatedProfitGTQ?.toLocaleString() ?? "?"} (mínimo requerido: Q${minProfitGTQ.toLocaleString()})`,
+          }).catch(() => {});
+        }
+        return result;
       }),
 
     platformFees: publicProcedure

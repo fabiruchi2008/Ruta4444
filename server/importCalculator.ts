@@ -19,11 +19,15 @@
  */
 
 import { getDb } from "./db";
-import { shippingRates, oceanRates } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { shippingRates, oceanRates, gtMarketPrices } from "../drizzle/schema";
+import { eq, and, isNull, sql } from "drizzle-orm";
 
 export type VehicleSize = "sedan" | "small_suv" | "medium_suv" | "large_suv" | "xl_suv" | "special";
 export type AuctionPlatform = "copart" | "iaai";
+
+// ─── Constantes de ganancia ────────────────────────────────────────────────────
+export const MIN_PROFIT_GTQ = 10000; // Ganancia mínima en quetzales
+export const MARKET_DISCOUNT_FACTOR = 0.87; // El cliente paga 13% menos que el mercado local
 
 export interface VehicleSizeInfo {
   size: VehicleSize;
@@ -36,6 +40,90 @@ export interface VehicleSizeInfo {
 // Esta ganancia se suma al precio de grúa real de Royal Shipping
 // El cliente ve el total como "Transporte USA" sin saber que incluye ganancia
 export const RUTA_CARS_PROFIT_USD = 500; // Ganancia fija en USD incluida en transporte
+
+// ─── Buscar precio de mercado GT en la DB ─────────────────────────────────────
+/**
+ * Busca el precio de mercado guatemalteco para un vehículo específico.
+ * Estrategia de búsqueda:
+ * 1. make + model + year exacto
+ * 2. make + model (sin año, promedio de todos los años)
+ * 3. null (no hay datos de mercado)
+ */
+export async function getGtMarketPrice(
+  make: string,
+  model: string,
+  year: number | null
+): Promise<{ priceGtq: number; source: "exact" | "model_avg" } | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+
+    const makeNorm = make.trim();
+    const modelNorm = model.trim();
+
+    // 1. Buscar por make + model + year exacto
+    if (year) {
+      const exact = await db
+        .select()
+        .from(gtMarketPrices)
+        .where(and(
+          eq(sql`LOWER(${gtMarketPrices.make})`, makeNorm.toLowerCase()),
+          eq(sql`LOWER(${gtMarketPrices.model})`, modelNorm.toLowerCase()),
+          eq(gtMarketPrices.year, year)
+        ))
+        .limit(1);
+
+      if (exact[0]) {
+        return { priceGtq: exact[0].priceGtq, source: "exact" };
+      }
+
+      // Buscar el año más cercano disponible para ese modelo
+      const allYears = await db
+        .select()
+        .from(gtMarketPrices)
+        .where(and(
+          eq(sql`LOWER(${gtMarketPrices.make})`, makeNorm.toLowerCase()),
+          eq(sql`LOWER(${gtMarketPrices.model})`, modelNorm.toLowerCase())
+        ));
+
+      if (allYears.length > 0) {
+        // Ordenar por cercanía al año buscado
+        const sorted = allYears
+          .filter(r => r.year != null)
+          .sort((a, b) => Math.abs((a.year ?? 0) - year) - Math.abs((b.year ?? 0) - year));
+
+        if (sorted[0]) {
+          return { priceGtq: sorted[0].priceGtq, source: "model_avg" };
+        }
+
+        // Si solo hay promedio sin año
+        const noYear = allYears.find(r => r.year == null);
+        if (noYear) {
+          return { priceGtq: noYear.priceGtq, source: "model_avg" };
+        }
+      }
+    }
+
+    // 2. Buscar promedio del modelo sin año
+    const modelAvg = await db
+      .select()
+      .from(gtMarketPrices)
+      .where(and(
+        eq(sql`LOWER(${gtMarketPrices.make})`, makeNorm.toLowerCase()),
+        eq(sql`LOWER(${gtMarketPrices.model})`, modelNorm.toLowerCase()),
+        isNull(gtMarketPrices.year)
+      ))
+      .limit(1);
+
+    if (modelAvg[0]) {
+      return { priceGtq: modelAvg[0].priceGtq, source: "model_avg" };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Detección de tamaño del vehículo (mapeo a tiers de Royal Shipping) ───────
 export function detectVehicleSize(bodyType: string | null | undefined): VehicleSizeInfo {
@@ -325,6 +413,14 @@ export interface ImportCalculationInput {
    * Por defecto: $500 USD
    */
   internalProfitUSD?: number;
+  /** Make del vehículo (para buscar precio de mercado GT) */
+  make?: string | null;
+  /** Model del vehículo (para buscar precio de mercado GT) */
+  model?: string | null;
+  /** Año del vehículo (para buscar precio de mercado GT) */
+  year?: number | null;
+  /** Ganancia mínima en quetzales (por defecto Q10,000) */
+  minProfitGTQ?: number;
 }
 
 export interface ImportCalculationResult {
@@ -348,8 +444,15 @@ export interface ImportCalculationResult {
   // Info de tarifas usadas
   vehicleSize: VehicleSizeInfo;
   needsManualQuote: boolean;
+  /** Razón por la que se requiere cotización manual */
+  manualQuoteReason?: "special_vehicle" | "low_profit";
   inlandRateSource: "exact" | "state_avg" | "fallback";
   inlandCity?: string;
+
+  // Información de mercado GT (para uso interno del sistema)
+  gtMarketPriceGTQ?: number;     // Precio de mercado GT encontrado en DB
+  gtMarketSource?: "exact" | "model_avg"; // Fuente del precio de mercado
+  estimatedProfitGTQ?: number;   // Ganancia estimada en quetzales
 
   // Desglose visible al cliente
   breakdown: { label: string; amountUSD: number; amountGTQ: number }[];
@@ -357,7 +460,7 @@ export interface ImportCalculationResult {
 
 export async function calculateImportCost(input: ImportCalculationInput): Promise<ImportCalculationResult> {
   const { auctionPrice, platform, stateCode, bodyType, exchangeRate, city } = input;
-  const internalProfitUSD = input.internalProfitUSD ?? RUTA_CARS_PROFIT_USD;
+  const minProfitGTQ = input.minProfitGTQ ?? MIN_PROFIT_GTQ;
 
   // 1. Fees de plataforma
   const platformFees = platform === "copart"
@@ -366,33 +469,92 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
 
   // 2. Tamaño del vehículo
   const vehicleSize = detectVehicleSize(bodyType);
-  const needsManualQuote = vehicleSize.needsManualQuote;
+
+  // Si el vehículo es especial, retornar cotización manual inmediatamente
+  if (vehicleSize.needsManualQuote) {
+    const inlandInfo = await getInlandRate(stateCode, platform, city);
+    const usaTransportBase = inlandInfo.rate;
+    const usaTransport = usaTransportBase + RUTA_CARS_PROFIT_USD;
+    const maritimeShipping = await getOceanRate(vehicleSize.size);
+    const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
+    const guatemalaTax = Math.round(cifValue * 0.32);
+    const miscExpensesGTQ = 5000;
+    const rutaCarsServiceUSD = 500;
+    const totalCostUSD = cifValue + guatemalaTax / exchangeRate + miscExpensesGTQ / exchangeRate + rutaCarsServiceUSD;
+    const finalPriceGTQ = Math.round(totalCostUSD * exchangeRate);
+    const finalPriceUSD = Math.round(finalPriceGTQ / exchangeRate);
+    return {
+      auctionPrice, platformFees, usaTransport, usaTransportBase, maritimeShipping,
+      cifValue, guatemalaTax, miscExpensesGTQ, rutaCarsServiceUSD, totalCostUSD,
+      finalPriceUSD, finalPriceGTQ, exchangeRate, vehicleSize,
+      needsManualQuote: true, manualQuoteReason: "special_vehicle",
+      inlandRateSource: inlandInfo.source, inlandCity: inlandInfo.city,
+      breakdown: [],
+    };
+  }
 
   // 3. Tarifa de grúa real de Royal Shipping (desde DB)
   const inlandInfo = await getInlandRate(stateCode, platform, city);
   const usaTransportBase = inlandInfo.rate;
-  // Ganancia oculta sumada al transporte
-  const usaTransport = usaTransportBase + internalProfitUSD;
 
   // 4. Flete marítimo real de Royal Shipping (desde DB, por tamaño)
   const maritimeShipping = await getOceanRate(vehicleSize.size);
 
-  // 5. CIF = Precio + Fees + Transporte USA (con ganancia) + Shipping Marítimo
-  const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
-
-  // 6. Impuesto Guatemala: 32% sobre CIF
-  const guatemalaTax = Math.round(cifValue * 0.32);
-
-  // 7. Gastos varios fijos: Q5,000
+  // 5. Calcular costo base de importación (sin ganancia de Ruta Cars)
+  const baseCostWithoutProfit = auctionPrice + platformFees.total + usaTransportBase + maritimeShipping;
+  const baseTaxWithoutProfit = Math.round(baseCostWithoutProfit * 0.32);
   const miscExpensesGTQ = 5000;
-
-  // 8. Servicio Ruta Cars GT: $500 visible al cliente
   const rutaCarsServiceUSD = 500;
+  const baseTotalCostGTQ = Math.round(
+    (baseCostWithoutProfit + baseTaxWithoutProfit / exchangeRate + miscExpensesGTQ / exchangeRate + rutaCarsServiceUSD) * exchangeRate
+  );
 
-  // 9. Total final al cliente
+  // 6. Buscar precio de mercado GT (si se proporcionaron make/model)
+  let gtMarketPriceGTQ: number | undefined;
+  let gtMarketSource: "exact" | "model_avg" | undefined;
+  let dynamicProfitGTQ = 0;
+
+  if (input.make && input.model) {
+    const marketData = await getGtMarketPrice(input.make, input.model, input.year ?? null);
+    if (marketData) {
+      gtMarketPriceGTQ = marketData.priceGtq;
+      gtMarketSource = marketData.source;
+      // Precio al cliente = precio mercado GT × 0.87 (13% más barato que mercado local)
+      const targetClientPriceGTQ = Math.round(marketData.priceGtq * MARKET_DISCOUNT_FACTOR);
+      dynamicProfitGTQ = targetClientPriceGTQ - baseTotalCostGTQ;
+    }
+  }
+
+  // 7. Determinar ganancia final
+  let internalProfitUSD: number;
+  let needsManualQuote = false;
+  let manualQuoteReason: "special_vehicle" | "low_profit" | undefined;
+
+  if (gtMarketPriceGTQ) {
+    // Tenemos precio de mercado GT: usar ganancia dinámica
+    if (dynamicProfitGTQ < minProfitGTQ) {
+      // Ganancia insuficiente: solicitar cotización manual
+      needsManualQuote = true;
+      manualQuoteReason = "low_profit";
+      // Calcular con ganancia mínima de todas formas para tener los números
+      internalProfitUSD = Math.ceil(minProfitGTQ / exchangeRate);
+    } else {
+      // Ganancia dinámica: diferencia entre precio objetivo y costo base
+      internalProfitUSD = Math.ceil(dynamicProfitGTQ / exchangeRate);
+    }
+  } else {
+    // Sin datos de mercado GT: usar ganancia fija de $500
+    internalProfitUSD = input.internalProfitUSD ?? RUTA_CARS_PROFIT_USD;
+  }
+
+  // 8. Calcular totales con la ganancia determinada
+  const usaTransport = usaTransportBase + internalProfitUSD;
+  const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
+  const guatemalaTax = Math.round(cifValue * 0.32);
   const totalCostUSD = cifValue + guatemalaTax / exchangeRate + miscExpensesGTQ / exchangeRate + rutaCarsServiceUSD;
   const finalPriceGTQ = Math.round(totalCostUSD * exchangeRate);
   const finalPriceUSD = Math.round(finalPriceGTQ / exchangeRate);
+  const estimatedProfitGTQ = finalPriceGTQ - baseTotalCostGTQ;
 
   // Desglose visible al cliente
   const breakdown = [
@@ -402,7 +564,7 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
     { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
     { label: "Impuestos Guatemala (32% CIF)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
     { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
-    { label: "Servicio Ruta Cars GT", amountUSD: rutaCarsServiceUSD, amountGTQ: Math.round(rutaCarsServiceUSD * exchangeRate) },
+    { label: "Gestión Internacional Ruta Cars", amountUSD: rutaCarsServiceUSD, amountGTQ: Math.round(rutaCarsServiceUSD * exchangeRate) },
   ];
 
   return {
@@ -421,11 +583,13 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
     exchangeRate,
     vehicleSize,
     needsManualQuote,
+    manualQuoteReason,
     inlandRateSource: inlandInfo.source,
     inlandCity: inlandInfo.city,
+    gtMarketPriceGTQ,
+    gtMarketSource,
+    estimatedProfitGTQ,
     breakdown,
-    // Ganancia interna (solo para admin, nunca mostrar al cliente)
-    // internalProfitUSD: internalProfitUSD, // COMENTADO INTENCIONALMENTE
   };
 }
 
@@ -468,7 +632,9 @@ export function calculateImportCostSync(input: Omit<ImportCalculationInput, 'cit
   return {
     auctionPrice, platformFees, usaTransport, usaTransportBase, maritimeShipping,
     cifValue, guatemalaTax, miscExpensesGTQ, rutaCarsServiceUSD, totalCostUSD,
-    finalPriceUSD, finalPriceGTQ, exchangeRate, vehicleSize, needsManualQuote, breakdown,
+    finalPriceUSD, finalPriceGTQ, exchangeRate, vehicleSize, needsManualQuote,
+    manualQuoteReason: vehicleSize.needsManualQuote ? "special_vehicle" as const : undefined,
+    breakdown,
   };
 }
 

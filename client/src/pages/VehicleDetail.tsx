@@ -1,11 +1,12 @@
 import { useParams } from "wouter";
-import { Car, Gauge, Fuel, MapPin, Calendar, ArrowLeft, MessageCircle, ChevronLeft, ChevronRight, Loader2, DollarSign, Ship, Truck, Receipt, Info, CheckCircle2, AlertTriangle, Zap, Gavel, RefreshCw } from "lucide-react";
+import { Car, Gauge, Fuel, MapPin, Calendar, ArrowLeft, MessageCircle, ChevronLeft, ChevronRight, Loader2, DollarSign, Ship, Truck, Receipt, Info, CheckCircle2, AlertTriangle, Zap, Gavel, RefreshCw, Expand, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { AuctionVehicle } from "../../../server/auctionsApi";
+import { useSEO } from "@/hooks/useSEO";
 
 // ─── Translations ─────────────────────────────────────────────────────────────
 
@@ -124,14 +125,16 @@ function BreakdownRow({ icon: Icon, label, usd, gtq, highlight = false, accent =
 function CalcPanel({
   title, subtitle, price, platform, stateCode, bodyType, city,
   accentColor, icon: Icon, isBuyNow, whatsappMsg, buyNowWhatsappMsg,
+  make, model, year,
 }: {
   title: string; subtitle: string; price: number;
   platform: "copart" | "iaai"; stateCode: string; bodyType: string | null; city?: string | null;
   accentColor: string; icon: any; isBuyNow: boolean;
   whatsappMsg: string; buyNowWhatsappMsg?: string;
+  make?: string; model?: string; year?: number;
 }) {
   const { data: calcResult, isLoading, refetch } = trpc.calculator.calculate.useQuery(
-    { auctionPrice: price, platform, stateCode, bodyType: bodyType ?? null, city: city ?? null },
+    { auctionPrice: price, platform, stateCode, bodyType: bodyType ?? null, city: city ?? null, make: make ?? null, model: model ?? null, year: year ?? null },
     { enabled: price > 0, staleTime: 5 * 60 * 1000 }
   );
 
@@ -168,8 +171,27 @@ function CalcPanel({
         ) : calcResult?.needsManualQuote ? (
           <div className="flex flex-col items-center py-5 gap-3 text-center">
             <AlertTriangle className="w-8 h-8 text-[#F97316]" />
-            <p className="text-white font-semibold text-sm">Requiere cotización especial</p>
-            <p className="text-slate-400 text-xs">El transporte de este vehículo se cotiza manualmente.</p>
+            {calcResult.manualQuoteReason === "low_profit" ? (
+              <>
+                <p className="text-white font-semibold text-sm">Precio especial disponible</p>
+                <p className="text-slate-400 text-xs">Este vehículo tiene condiciones especiales de importación. Contáctanos para obtener tu cotización personalizada.</p>
+                <a href={`https://wa.me/50231220803?text=${buyNowWhatsappMsg ?? whatsappMsg}`} target="_blank" rel="noopener noreferrer" className="w-full">
+                  <Button className="w-full font-bold btn-press bg-[#F97316] hover:bg-[#ea6b0a] text-white">
+                    <MessageCircle className="w-4 h-4 mr-2" /> Solicitar Cotización
+                  </Button>
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="text-white font-semibold text-sm">Requiere cotización especial</p>
+                <p className="text-slate-400 text-xs">El transporte de este vehículo se cotiza manualmente.</p>
+                <a href={`https://wa.me/50231220803?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer" className="w-full">
+                  <Button className="w-full font-bold btn-press bg-[#25D366] hover:bg-[#1da851] text-white">
+                    <MessageCircle className="w-4 h-4 mr-2" /> Consultar por WhatsApp
+                  </Button>
+                </a>
+              </>
+            )}
           </div>
         ) : calcResult ? (
           <>
@@ -223,10 +245,11 @@ function CalcPanel({
 // ─── Interactive auction calculator ──────────────────────────────────────────
 
 function AuctionCalcInteractive({
-  platform, stateCode, bodyType, city, currentBid, whatsappBase,
+  platform, stateCode, bodyType, city, currentBid, whatsappBase, make, model, year,
 }: {
   platform: "copart" | "iaai"; stateCode: string; bodyType: string | null; city?: string | null;
   currentBid: number; whatsappBase: string;
+  make?: string; model?: string; year?: number;
 }) {
   const [bidInput, setBidInput] = useState<string>(currentBid > 0 ? String(currentBid) : "");
   const [debouncedBid, setDebouncedBid] = useState<number>(currentBid > 0 ? currentBid : 0);
@@ -240,7 +263,7 @@ function AuctionCalcInteractive({
   }, [bidInput]);
 
   const { data: calcResult, isLoading, refetch } = trpc.calculator.calculate.useQuery(
-    { auctionPrice: debouncedBid, platform, stateCode, bodyType: bodyType ?? null, city: city ?? null },
+    { auctionPrice: debouncedBid, platform, stateCode, bodyType: bodyType ?? null, city: city ?? null, make: make ?? null, model: model ?? null, year: year ?? null },
     { enabled: debouncedBid > 0, staleTime: 5 * 60 * 1000 }
   );
 
@@ -304,7 +327,22 @@ function AuctionCalcInteractive({
         ) : calcResult?.needsManualQuote ? (
           <div className="flex flex-col items-center py-5 gap-3 text-center">
             <AlertTriangle className="w-8 h-8 text-[#F97316]" />
-            <p className="text-white font-semibold text-sm">Requiere cotización especial</p>
+            {calcResult.manualQuoteReason === "low_profit" ? (
+              <>
+                <p className="text-white font-semibold text-sm">Precio especial disponible</p>
+                <p className="text-slate-400 text-xs">Este vehículo tiene condiciones especiales. Contáctanos para una cotización personalizada.</p>
+                <a href={`https://wa.me/50231220803?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer" className="w-full">
+                  <Button className="w-full font-bold btn-press bg-[#F97316] hover:bg-[#ea6b0a] text-white">
+                    <MessageCircle className="w-4 h-4 mr-2" /> Solicitar Cotización
+                  </Button>
+                </a>
+              </>
+            ) : (
+              <>
+                <p className="text-white font-semibold text-sm">Requiere cotización especial</p>
+                <p className="text-slate-400 text-xs">El transporte de este vehículo se cotiza manualmente.</p>
+              </>
+            )}
           </div>
         ) : calcResult ? (
           <>
@@ -343,12 +381,103 @@ function AuctionCalcInteractive({
   );
 }
 
+// ─── Lightbox ────────────────────────────────────────────────────────────────
+
+function Lightbox({
+  images, initialIdx, onClose,
+}: {
+  images: string[]; initialIdx: number; onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(initialIdx);
+
+  const prev = useCallback(() => setIdx(i => (i - 1 + images.length) % images.length), [images.length]);
+  const next = useCallback(() => setIdx(i => (i + 1) % images.length), [images.length]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [prev, next, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+      onClick={onClose}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <span className="text-slate-400 text-sm">{idx + 1} / {images.length}</span>
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Main image */}
+      <div
+        className="flex-1 flex items-center justify-center relative px-12 min-h-0"
+        onClick={e => e.stopPropagation()}
+      >
+        <img
+          src={images[idx]}
+          alt={`Foto ${idx + 1}`}
+          className="max-h-full max-w-full object-contain rounded-lg select-none"
+          draggable={false}
+        />
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/25 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/25 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Thumbnail strip */}
+      {images.length > 1 && (
+        <div
+          className="flex-shrink-0 px-4 py-3 flex gap-2 overflow-x-auto scrollbar-thin"
+          onClick={e => e.stopPropagation()}
+        >
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={`flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                i === idx ? "border-[#00C8E0] scale-105" : "border-transparent opacity-50 hover:opacity-80"
+              }`}
+            >
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function VehicleDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const [imgIdx, setImgIdx] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   function goBackToCatalog() {
     if (window.history.length > 1) window.history.back();
@@ -361,6 +490,19 @@ export default function VehicleDetail() {
   );
 
   const vehicle = rawVehicle ? normalizeVehicleDetail(rawVehicle) : null;
+
+  // SEO dinámico por vehículo (usamos los campos ya normalizados)
+  const seoMake = vehicle?.make ?? "";
+  const seoModel = vehicle?.model ?? "";
+  const seoYear = vehicle?.year ?? "";
+  const seoLot = vehicle?.lotNumber ?? id;
+  const seoImage = vehicle?.allImages?.[0];
+  useSEO(vehicle ? {
+    title: `${seoYear} ${seoMake} ${seoModel} - Lote #${seoLot}`,
+    description: `Importa este ${seoYear} ${seoMake} ${seoModel} desde subastas USA a Guatemala. Cotización automática incluida.`,
+    image: seoImage,
+    url: `https://rutacarsgt.manus.space/vehiculo/${id}`,
+  } : {});
 
   if (isLoading) {
     return (
@@ -417,9 +559,14 @@ export default function VehicleDetail() {
           {/* ── Left: Gallery + specs ── */}
           <div className="space-y-4">
             {/* Main image */}
-            <div className="relative aspect-video bg-[#141E30] rounded-2xl overflow-hidden">
+            <div className="relative aspect-video bg-[#141E30] rounded-2xl overflow-hidden group">
               {allImages.length > 0 ? (
-                <img src={allImages[imgIdx]} alt={`${vehicle.year} ${make} ${model}`} className="w-full h-full object-cover" />
+                <img
+                  src={allImages[imgIdx]}
+                  alt={`${vehicle.year} ${make} ${model}`}
+                  className="w-full h-full object-cover cursor-zoom-in"
+                  onClick={() => setLightboxOpen(true)}
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center"><Car className="w-20 h-20 text-[#243048]" /></div>
               )}
@@ -434,6 +581,16 @@ export default function VehicleDetail() {
                   </span>
                 )}
               </div>
+              {/* Expand button */}
+              {allImages.length > 0 && (
+                <button
+                  onClick={() => setLightboxOpen(true)}
+                  className="absolute top-3 right-3 w-8 h-8 bg-black/60 hover:bg-black/80 rounded-lg flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100"
+                  title="Ver en pantalla completa"
+                >
+                  <Expand className="w-4 h-4" />
+                </button>
+              )}
               {allImages.length > 1 && (
                 <>
                   <button onClick={() => setImgIdx(i => Math.max(0, i - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors">
@@ -593,6 +750,9 @@ export default function VehicleDetail() {
                 isBuyNow={true}
                 whatsappMsg={baseWhatsapp}
                 buyNowWhatsappMsg={buyNowWhatsapp}
+                make={make}
+                model={model}
+                year={vehicle.year ?? undefined}
               />
             )}
 
@@ -605,6 +765,9 @@ export default function VehicleDetail() {
                 city={city}
                 currentBid={bidPrice}
                 whatsappBase={baseWhatsapp}
+                make={make}
+                model={model}
+                year={vehicle.year ?? undefined}
               />
             )}
 
@@ -631,6 +794,9 @@ export default function VehicleDetail() {
                     isBuyNow={true}
                     whatsappMsg={baseWhatsapp}
                     buyNowWhatsappMsg={buyNowWhatsapp}
+                    make={make}
+                    model={model}
+                    year={vehicle.year ?? undefined}
                   />
                 </div>
 
@@ -649,6 +815,9 @@ export default function VehicleDetail() {
                   city={city}
                   currentBid={bidPrice}
                   whatsappBase={baseWhatsapp}
+                  make={make}
+                  model={model}
+                  year={vehicle.year ?? undefined}
                 />
               </>
             )}
@@ -677,6 +846,15 @@ export default function VehicleDetail() {
           </div>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && allImages.length > 0 && (
+        <Lightbox
+          images={allImages}
+          initialIdx={imgIdx}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </div>
   );
 }

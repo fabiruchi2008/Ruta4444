@@ -148,3 +148,20 @@ export const oceanRates = mysqlTable("ocean_rates", {
 
 export type OceanRate = typeof oceanRates.$inferSelect;
 export type InsertOceanRate = typeof oceanRates.$inferInsert;
+
+// ─── Precios de Mercado Guatemala ─────────────────────────────────────────────
+// Precios de referencia del mercado guatemalteco (Facebook Marketplace, etc.)
+// Usados para calcular la ganancia dinámica de Ruta Cars GT
+export const gtMarketPrices = mysqlTable("gt_market_prices", {
+  id: int("id").autoincrement().primaryKey(),
+  make: varchar("make", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  year: int("year"),
+  priceGtq: int("price_gtq").notNull(),
+  source: varchar("source", { length: 100 }).default("facebook_marketplace"),
+  sampleCount: int("sample_count").default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type GtMarketPrice = typeof gtMarketPrices.$inferSelect;
+export type InsertGtMarketPrice = typeof gtMarketPrices.$inferInsert;

@@ -244,3 +244,58 @@ describe("auth.logout", () => {
     });
   });
 });
+
+// ─── Ganancia dinámica + requiresManualQuote ──────────────────────────────────
+
+import { MIN_PROFIT_GTQ, MARKET_DISCOUNT_FACTOR, getGtMarketPrice } from "./importCalculator";
+
+describe("Constantes de ganancia dinámica", () => {
+  it("MIN_PROFIT_GTQ es Q10,000", () => {
+    expect(MIN_PROFIT_GTQ).toBe(10000);
+  });
+  it("MARKET_DISCOUNT_FACTOR es 0.87 (13% descuento vs mercado local)", () => {
+    expect(MARKET_DISCOUNT_FACTOR).toBe(0.87);
+  });
+});
+
+describe("calculateImportCostSync con internalProfitUSD personalizado", () => {
+  const baseInput = {
+    auctionPrice: 5000,
+    platform: "copart" as const,
+    stateCode: "FL",
+    bodyType: "Sedan",
+    exchangeRate: 7.75,
+  };
+
+  it("acepta internalProfitUSD personalizado (ganancia dinámica simulada)", () => {
+    const profitUSD = 2000;
+    const result = calculateImportCostSync({ ...baseInput, internalProfitUSD: profitUSD });
+    expect(result.usaTransport).toBe(result.usaTransportBase + profitUSD);
+  });
+
+  it("breakdown incluye línea 'Servicio Ruta Cars GT' visible al cliente", () => {
+    const result = calculateImportCostSync(baseInput);
+    const servicioItem = result.breakdown.find(b => b.label.includes("Ruta Cars"));
+    expect(servicioItem).toBeDefined();
+    expect(servicioItem?.amountUSD).toBe(500);
+  });
+
+  it("breakdown NO expone ganancia oculta al cliente", () => {
+    const result = calculateImportCostSync({ ...baseInput, internalProfitUSD: 2500 });
+    const labels = result.breakdown.map(b => b.label.toLowerCase());
+    expect(labels.some(l => l.includes("ganancia") || l.includes("profit") || l.includes("internal"))).toBe(false);
+  });
+
+  it("vehículo especial (Motorhome) retorna needsManualQuote=true y manualQuoteReason=special_vehicle", () => {
+    const result = calculateImportCostSync({ ...baseInput, bodyType: "Motorhome" });
+    expect(result.needsManualQuote).toBe(true);
+    expect(result.manualQuoteReason).toBe("special_vehicle");
+  });
+});
+
+describe("getGtMarketPrice (unit)", () => {
+  it("retorna null o un objeto válido sin lanzar error", async () => {
+    const result = await getGtMarketPrice("Toyota", "Corolla", 2020);
+    expect(result === null || (typeof result === "object" && "priceGtq" in result)).toBe(true);
+  });
+});

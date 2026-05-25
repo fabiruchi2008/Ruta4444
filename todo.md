@@ -124,3 +124,23 @@
 - [x] Endpoint tRPC para consultar shipping_rates por estado + tamaño
 - [x] Mostrar desglose real: Transporte USA (incluye ganancia), Shipping Marítimo (precio real Royal), fees de subasta reales
 - [x] Implementar logo nuevo de Ruta Cars GT en navbar (imagen real del logo)
+
+## Mejoras v7 - Ganancia Oculta Correcta
+- [ ] importCalculator: "Gestión Internacional Ruta Cars $500" aparece en desglose pero NO suma al total
+- [ ] importCalculator: ganancia mínima Q8,000-Q10,000 incluida en el Total Importación de forma invisible
+- [ ] VehicleDetail: actualizar display del desglose para reflejar nueva lógica
+- [ ] Home.tsx: actualizar ejemplo de cotización con nueva lógica
+
+## Mejoras v8 - Sistema Completo
+
+- [x] Tabla gt_market_prices en DB: precios de mercado GT por marca/modelo/año
+- [x] Poblar gt_market_prices con 171 registros de modelos populares
+- [x] importCalculator.ts: ganancia dinámica (precio_mercado_gt × 0.87 - costo_real, mínimo Q10,000)
+- [x] Línea "Gestión Internacional Ruta Cars" visible en desglose (cubre ganancia oculta)
+- [x] Cuando ganancia < Q10,000 (requiresManualQuote): mostrar botón "Solicitar Cotización" en lugar de precio
+- [x] Notificaciones al owner via sistema Manus (Forge API) - mejor que Telegram para este proyecto
+- [x] Galería de fotos con lightbox en VehicleDetail (todas las fotos del lote, navegación por teclado)
+- [x] Botón "Solicitar Cotización" → WhatsApp con datos del carro pre-cargados
+- [x] SEO: meta tags dinámicos por vehículo (title, description, og:image) via hook useSEO
+- [x] SEO: Open Graph + Twitter Card en index.html
+- [ ] SEO: sitemap.xml y robots.txt
