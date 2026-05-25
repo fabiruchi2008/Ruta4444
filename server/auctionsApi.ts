@@ -304,9 +304,29 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   if (search_query && search_query.trim()) {
     const q = search_query.trim();
     if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(q) || /^\d{6,12}$/.test(q)) {
+      // VIN o número de lote: pasar tal cual
       p.search_query = q;
     } else {
-      p.name = q;
+      // Búsqueda general: detectar años en el texto (ej. "Silverado 2025", "2020 Toyota Camry")
+      // Extraer todos los años de 4 dígitos entre 1980 y 2030
+      const yearMatches = q.match(/\b(19[89]\d|20[0-2]\d|2030)\b/g);
+      let cleanName = q;
+      let extractedFromYear: number | undefined;
+      let extractedToYear: number | undefined;
+
+      if (yearMatches && yearMatches.length > 0) {
+        const years = yearMatches.map(Number).sort((a, b) => a - b);
+        extractedFromYear = years[0];
+        extractedToYear = years[years.length - 1];
+        // Quitar los años del texto de búsqueda
+        cleanName = q.replace(/\b(19[89]\d|20[0-2]\d|2030)\b/g, "").replace(/\s+/g, " ").trim();
+      }
+
+      if (cleanName) p.name = cleanName;
+
+      // Solo aplicar años extraídos si el usuario no ya especificó filtros de año
+      if (extractedFromYear && !p.from_year) p.from_year = extractedFromYear;
+      if (extractedToYear && !p.to_year) p.to_year = extractedToYear;
     }
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
