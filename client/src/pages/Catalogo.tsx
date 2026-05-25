@@ -93,10 +93,10 @@ const DRIVE_WHEELS = [
 ];
 
 const RUN_CONDITIONS = [
-  { id: 1, label: "Enciende y Maneja" },
-  { id: 2, label: "Motor Enciende" },
+  { id: 0, label: "Enciende y Avanza" },
+  { id: 6, label: "Motor Enciende" },
   { id: 3, label: "No Enciende" },
-  { id: 4, label: "Mejorado" },
+  { id: 7, label: "Mejorado" },
 ];
 
 const CYLINDERS = [3, 4, 5, 6, 8, 10, 12];
@@ -210,7 +210,7 @@ function detectSearchType(q: string): "vin" | "lot" | "general" {
 
 // ─── Persist catalog state ────────────────────────────────────────────────────
 
-const STORAGE_KEY = "rutacars_catalog_filters_v3";
+const STORAGE_KEY = "rutacars_catalog_filters_v4"; // v4: IDs de condición corregidos (0=run_and_drives, 6=engine_starts)
 
 type CatalogFilters = {
   search_query: string;
@@ -1098,8 +1098,8 @@ export default function Catalogo() {
 
               {/* Filtros rápidos de condición */}
               {[
-                { conditionId: 1, label: "✓ Enciende y Avanza", activeColor: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" },
-                { conditionId: 2, label: "⚡ Motor Enciende", activeColor: "bg-yellow-500/15 border-yellow-500/40 text-yellow-400" },
+                { conditionId: 0, label: "✓ Enciende y Avanza", activeColor: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" },
+                { conditionId: 6, label: "⚡ Motor Enciende", activeColor: "bg-yellow-500/15 border-yellow-500/40 text-yellow-400" },
               ].map(opt => {
                 const active = filters.condition === opt.conditionId;
                 return (
