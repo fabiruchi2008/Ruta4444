@@ -133,26 +133,31 @@ export default function Home() {
                     {[
                       { label: "Precio Subasta", value: "$8,500", color: "text-white" },
                       { label: "Fees Copart", value: "$699", color: "text-slate-300" },
-                      { label: "Transporte USA", value: "$1,250", color: "text-slate-300" },
+                      { label: "Transporte USA", value: "$750", color: "text-slate-300" },
                       { label: "Flete Marítimo (Royal Shipping)", value: "$1,100", color: "text-slate-300" },
-                      { label: "Impuestos Guatemala (32%)", value: "$3,696", color: "text-slate-300" },
+                      { label: "Impuestos Guatemala (32%)", value: "$3,535", color: "text-slate-300" },
                       { label: "Gastos Varios", value: "$645", color: "text-slate-300" },
-                      { label: "Servicio Ruta Cars", value: "$500", color: "text-[#F97316]" },
+                      { label: "Gestión Internacional", value: "$1,800", color: "text-[#00C8E0]" },
                     ].map((item) => (
                       <div key={item.label} className="flex justify-between items-center py-1.5 border-b border-[#243048]/50 last:border-0">
                         <span className="text-slate-400 text-sm">{item.label}</span>
                         <span className={`text-sm font-medium ${item.color}`}>{item.value}</span>
                       </div>
                     ))}
+                    {/* Línea decorativa: NO suma al total */}
+                    <div className="flex justify-between items-center py-1.5 opacity-50">
+                      <span className="text-slate-500 text-xs">Servicio Ruta Cars GT</span>
+                      <span className="text-slate-500 text-xs line-through">$500 <span className="no-underline">(incluido)</span></span>
+                    </div>
                   </div>
                   <div className="pt-2 border-t border-[#243048]">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-white font-semibold">Total Importación</span>
-                       <span className="text-[#00C8E0] font-bold text-xl">$15,390 USD</span>
+                       <span className="text-[#00C8E0] font-bold text-xl">$17,029 USD</span>
                      </div>
                      <div className="flex justify-between items-center">
                        <span className="text-slate-400 text-sm">En Quetzales</span>
-                       <span className="text-slate-300 font-medium">Q119,273 GTQ</span>
+                       <span className="text-slate-300 font-medium">Q131,975 GTQ</span>
                     </div>
                   </div>
                   <div className="bg-[#00C8E0]/10 border border-[#00C8E0]/20 rounded-xl p-4">

@@ -143,4 +143,12 @@
 - [x] Botón "Solicitar Cotización" → WhatsApp con datos del carro pre-cargados
 - [x] SEO: meta tags dinámicos por vehículo (title, description, og:image) via hook useSEO
 - [x] SEO: Open Graph + Twitter Card en index.html
-- [ ] SEO: sitemap.xml y robots.txt
+- [x] SEO: sitemap.xml y robots.txt
+
+## Corrección lógica de desglose v9
+
+- [x] importCalculator: línea "Gestión Internacional" = ganancia real dinámica (SÍ suma al total)
+- [x] importCalculator: línea "Servicio Ruta Cars GT $500" = decorativa, NO suma al total
+- [x] VehicleDetail/CalcPanel: mostrar ambas líneas correctamente en el desglose
+- [x] Home.tsx: actualizar ejemplo de cotización con nueva lógica
+- [x] SEO: sitemap.xml y robots.txt

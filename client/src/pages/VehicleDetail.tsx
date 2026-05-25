@@ -202,7 +202,12 @@ function CalcPanel({
               <BreakdownRow icon={Ship} label="Flete Marítimo (Pto. Quetzal)" usd={calcResult.maritimeShipping} gtq={Math.round(calcResult.maritimeShipping * er)} />
               <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={Math.round(calcResult.guatemalaTax / er)} gtq={calcResult.guatemalaTax} />
               <BreakdownRow icon={Receipt} label="Gastos Varios (aduana, trámites)" usd={Math.round(calcResult.miscExpensesGTQ / er)} gtq={calcResult.miscExpensesGTQ} />
-              <BreakdownRow icon={CheckCircle2} label="Servicio Ruta Cars GT" usd={calcResult.rutaCarsServiceUSD} gtq={Math.round(calcResult.rutaCarsServiceUSD * er)} accent />
+              <BreakdownRow icon={CheckCircle2} label="Gestión Internacional" usd={calcResult.gestionInternacionalUSD} gtq={Math.round(calcResult.gestionInternacionalUSD * er)} accent />
+              {/* Línea decorativa: visible al cliente pero NO incluida en el total */}
+              <div className="flex items-center justify-between py-1.5 px-1 opacity-50">
+                <span className="text-slate-400 text-xs">Servicio Ruta Cars GT</span>
+                <span className="text-slate-400 text-xs line-through">${calcResult.rutaCarsServiceUSD} <span className="no-underline text-[10px]">(incluido)</span></span>
+              </div>
             </div>
 
             {/* Total */}
@@ -353,7 +358,12 @@ function AuctionCalcInteractive({
               <BreakdownRow icon={Ship} label="Flete Marítimo (Pto. Quetzal)" usd={calcResult.maritimeShipping} gtq={Math.round(calcResult.maritimeShipping * er)} />
               <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={Math.round(calcResult.guatemalaTax / er)} gtq={calcResult.guatemalaTax} />
               <BreakdownRow icon={Receipt} label="Gastos Varios" usd={Math.round(calcResult.miscExpensesGTQ / er)} gtq={calcResult.miscExpensesGTQ} />
-              <BreakdownRow icon={CheckCircle2} label="Servicio Ruta Cars GT" usd={calcResult.rutaCarsServiceUSD} gtq={Math.round(calcResult.rutaCarsServiceUSD * er)} accent />
+              <BreakdownRow icon={CheckCircle2} label="Gestión Internacional" usd={calcResult.gestionInternacionalUSD} gtq={Math.round(calcResult.gestionInternacionalUSD * er)} accent />
+              {/* Línea decorativa: visible al cliente pero NO incluida en el total */}
+              <div className="flex items-center justify-between py-1.5 px-1 opacity-50">
+                <span className="text-slate-400 text-xs">Servicio Ruta Cars GT</span>
+                <span className="text-slate-400 text-xs line-through">${calcResult.rutaCarsServiceUSD} <span className="no-underline text-[10px]">(incluido)</span></span>
+              </div>
             </div>
 
             <div className="mt-3 rounded-xl p-4 bg-[#00C8E0]/10 border border-[#00C8E0]/30">

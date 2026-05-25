@@ -162,10 +162,11 @@ describe("Full import cost calculation (nueva lógica: 32% GT unificado)", () =>
     expect(servicioItem?.amountUSD).toBe(500);
   });
 
-  it("usaTransport includes base rate + $500 profit (hidden)", () => {
+  it("usaTransport es igual a usaTransportBase (grua real, sin ganancia)", () => {
     const result = calculateImportCostSync(baseInput);
-    // usaTransportBase is the real Royal Shipping rate, usaTransport adds $500 profit
-    expect(result.usaTransport).toBe(result.usaTransportBase + 500);
+    // Nueva lógica: usaTransport = solo grua real, la ganancia va en gestionInternacionalUSD
+    expect(result.usaTransport).toBe(result.usaTransportBase);
+    expect(result.gestionInternacionalUSD).toBe(result.rutaCarsServiceUSD); // default $500
   });
 
   it("breakdown does NOT expose internal profit to client", () => {
@@ -267,15 +268,43 @@ describe("calculateImportCostSync con internalProfitUSD personalizado", () => {
     exchangeRate: 7.75,
   };
 
-  it("acepta internalProfitUSD personalizado (ganancia dinámica simulada)", () => {
+  it("gestionInternacionalUSD refleja la ganancia real (internalProfitUSD)", () => {
     const profitUSD = 2000;
     const result = calculateImportCostSync({ ...baseInput, internalProfitUSD: profitUSD });
-    expect(result.usaTransport).toBe(result.usaTransportBase + profitUSD);
+    expect(result.gestionInternacionalUSD).toBe(profitUSD);
+    // usaTransport ahora es solo la grua real, sin ganancia
+    expect(result.usaTransport).toBe(result.usaTransportBase);
   });
 
-  it("breakdown incluye línea 'Servicio Ruta Cars GT' visible al cliente", () => {
+  it("gestionInternacionalUSD sí suma al totalCostUSD", () => {
+    const profitUSD = 1500;
+    const result = calculateImportCostSync({ ...baseInput, internalProfitUSD: profitUSD });
+    // El total debe incluir la gestion internacional
+    expect(result.totalCostUSD).toBeGreaterThan(
+      result.auctionPrice + result.platformFees.total + result.usaTransport + result.maritimeShipping
+    );
+  });
+
+  it("rutaCarsServiceUSD ($500) NO suma al totalCostUSD", () => {
     const result = calculateImportCostSync(baseInput);
-    const servicioItem = result.breakdown.find(b => b.label.includes("Ruta Cars"));
+    // El total NO debe incluir los $500 decorativos
+    const totalSinServicio = result.cifValue + result.guatemalaTax / result.exchangeRate
+      + result.miscExpensesGTQ / result.exchangeRate + result.gestionInternacionalUSD;
+    expect(Math.abs(result.totalCostUSD - totalSinServicio)).toBeLessThan(1);
+    expect(result.rutaCarsServiceUSD).toBe(500);
+  });
+
+  it("breakdown incluye línea 'Gestión Internacional' con la ganancia real", () => {
+    const profitUSD = 1800;
+    const result = calculateImportCostSync({ ...baseInput, internalProfitUSD: profitUSD });
+    const gestionItem = result.breakdown.find(b => b.label === "Gestión Internacional");
+    expect(gestionItem).toBeDefined();
+    expect(gestionItem?.amountUSD).toBe(profitUSD);
+  });
+
+  it("breakdown incluye línea 'Servicio Ruta Cars GT' decorativa con $500", () => {
+    const result = calculateImportCostSync(baseInput);
+    const servicioItem = result.breakdown.find(b => b.label.includes("Servicio Ruta Cars"));
     expect(servicioItem).toBeDefined();
     expect(servicioItem?.amountUSD).toBe(500);
   });

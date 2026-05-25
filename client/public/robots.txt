@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Bloquear rutas de administración
+Disallow: /admin
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://rutacarsgt.manus.space/sitemap.xml
