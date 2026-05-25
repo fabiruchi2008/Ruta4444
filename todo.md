@@ -152,3 +152,9 @@
 - [x] VehicleDetail/CalcPanel: mostrar ambas líneas correctamente en el desglose
 - [x] Home.tsx: actualizar ejemplo de cotización con nueva lógica
 - [x] SEO: sitemap.xml y robots.txt
+
+## Calculadora Admin (costo real sin ganancia)
+
+- [x] Endpoint admin.calculateReal: costo real sin Gestión Internacional
+- [x] Página AdminCalculadora.tsx: inputs + desglose completo sin ganancia
+- [x] Ruta /admin/calculadora y enlace en el panel admin (botón naranja)

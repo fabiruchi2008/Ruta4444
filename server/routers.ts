@@ -487,6 +487,42 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
         await db.update(quotes).set({ status: input.status as any }).where(eq(quotes.id, input.id));
         return { success: true };
       }),
+
+    // Calculadora de costo real (sin ganancia) — solo para admin
+    calculateReal: adminProcedure
+      .input(z.object({
+        auctionPrice: z.number(),
+        platform: z.enum(["copart", "iaai"]),
+        stateCode: z.string(),
+        bodyType: z.string().nullable().optional(),
+        city: z.string().nullable().optional(),
+        exchangeRate: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const exchangeRate = input.exchangeRate ?? parseFloat(await getSetting("exchange_rate", "7.75"));
+        const result = await calculateImportCost({
+          auctionPrice: input.auctionPrice,
+          platform: input.platform as "copart" | "iaai",
+          stateCode: input.stateCode,
+          bodyType: input.bodyType ?? null,
+          city: input.city ?? null,
+          exchangeRate,
+          internalProfitUSD: 0, // Sin ganancia para admin
+          minProfitGTQ: 0,      // Sin ganancia mínima
+        });
+        // Costo real = total sin Gestión Internacional
+        const realCostUSD = result.totalCostUSD - result.gestionInternacionalUSD;
+        const realCostGTQ = Math.round(realCostUSD * exchangeRate);
+        return {
+          ...result,
+          // Sobreescribir para mostrar costo real sin ganancia
+          gestionInternacionalUSD: 0,
+          totalCostUSD: realCostUSD,
+          finalPriceUSD: Math.round(realCostUSD),
+          finalPriceGTQ: realCostGTQ,
+          breakdown: result.breakdown.filter(b => b.label !== "Gestión Internacional" && b.label !== "Servicio Ruta Cars GT"),
+        };
+      }),
   }),
 
   vehicleDetail: router({

@@ -9,6 +9,7 @@ import Catalogo from "./pages/Catalogo";
 import Servicios from "./pages/Servicios";
 import Contacto from "./pages/Contacto";
 import Admin from "./pages/Admin";
+import AdminCalculadora from "./pages/AdminCalculadora";
 import VehicleDetail from "./pages/VehicleDetail";
 import Seguimiento from "./pages/Seguimiento";
 import Navbar from "./components/Navbar";
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/servicios" component={Servicios} />
       <Route path="/contacto" component={Contacto} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin/calculadora" component={AdminCalculadora} />
       <Route path="/vehiculo/:id" component={VehicleDetail} />
       <Route path="/seguimiento" component={Seguimiento} />
       <Route path="/404" component={NotFound} />

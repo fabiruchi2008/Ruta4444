@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Car, FileText, Settings, Users, TrendingUp, DollarSign, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { BarChart3, Car, FileText, Settings, Users, TrendingUp, DollarSign, Eye, CheckCircle, XCircle, Loader2, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,17 +110,24 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="quotes">
-          <TabsList className="bg-[#141E30] border border-[#243048] mb-6">
-            <TabsTrigger value="quotes" className="data-[state=active]:bg-[#00C8E0] data-[state=active]:text-[#080D18]">
-              <FileText className="w-4 h-4 mr-2" /> Cotizaciones
-            </TabsTrigger>
-            <TabsTrigger value="contacts" className="data-[state=active]:bg-[#00C8E0] data-[state=active]:text-[#080D18]">
-              <Users className="w-4 h-4 mr-2" /> Contactos
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="data-[state=active]:bg-[#00C8E0] data-[state=active]:text-[#080D18]">
-              <Settings className="w-4 h-4 mr-2" /> Configuración
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <TabsList className="bg-[#141E30] border border-[#243048]">
+              <TabsTrigger value="quotes" className="data-[state=active]:bg-[#00C8E0] data-[state=active]:text-[#080D18]">
+                <FileText className="w-4 h-4 mr-2" /> Cotizaciones
+              </TabsTrigger>
+              <TabsTrigger value="contacts" className="data-[state=active]:bg-[#00C8E0] data-[state=active]:text-[#080D18]">
+                <Users className="w-4 h-4 mr-2" /> Contactos
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="data-[state=active]:bg-[#00C8E0] data-[state=active]:text-[#080D18]">
+                <Settings className="w-4 h-4 mr-2" /> Configuración
+              </TabsTrigger>
+            </TabsList>
+            <Link href="/admin/calculadora">
+              <Button className="bg-[#F97316] hover:bg-[#F97316]/90 text-white font-bold btn-press flex items-center gap-2">
+                <Calculator className="w-4 h-4" /> Calculadora Interna
+              </Button>
+            </Link>
+          </div>
 
           {/* Quotes Tab */}
           <TabsContent value="quotes">
