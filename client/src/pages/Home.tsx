@@ -133,9 +133,9 @@ export default function Home() {
                     {[
                       { label: "Precio Subasta", value: "$8,500", color: "text-white" },
                       { label: "Fees Copart", value: "$699", color: "text-slate-300" },
-                      { label: "Transporte USA", value: "$750", color: "text-slate-300" },
-                      { label: "Shipping Marítimo", value: "$2,800", color: "text-slate-300" },
-                      { label: "Impuestos Guatemala (32%)", value: "$3,808", color: "text-slate-300" },
+                      { label: "Transporte USA", value: "$1,250", color: "text-slate-300" },
+                      { label: "Flete Marítimo (Royal Shipping)", value: "$1,100", color: "text-slate-300" },
+                      { label: "Impuestos Guatemala (32%)", value: "$3,696", color: "text-slate-300" },
                       { label: "Gastos Varios", value: "$645", color: "text-slate-300" },
                       { label: "Servicio Ruta Cars", value: "$500", color: "text-[#F97316]" },
                     ].map((item) => (
@@ -148,11 +148,11 @@ export default function Home() {
                   <div className="pt-2 border-t border-[#243048]">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-white font-semibold">Total Importación</span>
-                      <span className="text-[#00C8E0] font-bold text-xl">$16,489 USD</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">En Quetzales</span>
-                      <span className="text-slate-300 font-medium">Q127,790 GTQ</span>
+                       <span className="text-[#00C8E0] font-bold text-xl">$15,390 USD</span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-slate-400 text-sm">En Quetzales</span>
+                       <span className="text-slate-300 font-medium">Q119,273 GTQ</span>
                     </div>
                   </div>
                   <div className="bg-[#00C8E0]/10 border border-[#00C8E0]/20 rounded-xl p-4">

@@ -42,13 +42,11 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-[#00C8E0] to-[#0099ad] flex items-center justify-center glow-cyan group-hover:scale-105 transition-transform">
-              <Car className="w-5 h-5 text-[#080D18]" strokeWidth={2.5} />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-display text-xl text-white tracking-wider">RUTA CARS</span>
-              <span className="text-[10px] text-[#00C8E0] font-semibold tracking-[0.2em] uppercase">Guatemala</span>
-            </div>
+            <img
+              src="/manus-storage/ruta-cars-logo_d89729c2.png"
+              alt="Ruta Cars GT"
+              className="h-12 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-lg"
+            />
           </Link>
 
           {/* Desktop Nav */}

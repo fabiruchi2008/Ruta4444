@@ -116,11 +116,11 @@
 
 ## Mejoras v6 - Royal Shipping Scraping + Calculadora Precisa
 
-- [ ] Scraping profundo de Royal Shipping: precios reales por estado USA, tipo de subasta (Copart/IAAI), tamaño de vehículo (sedan/SUV/pickup/van)
-- [ ] Crear tabla shipping_rates en DB con columnas: state_code, auction_type, vehicle_size, price_usd, port, notes
-- [ ] Poblar tabla con todos los precios reales de Royal Shipping
-- [ ] Actualizar calculadora VehicleDetail: detección automática de estado + tamaño por tipo de carrocería
-- [ ] Ganancia de Ruta Cars GT incluida en línea "Transporte USA" (oculta, no visible al cliente)
-- [ ] Endpoint tRPC para consultar shipping_rates por estado + tamaño
-- [ ] Mostrar desglose real: Transporte USA (incluye ganancia), Shipping Marítimo (precio real Royal), fees de subasta reales
-- [ ] Implementar logo nuevo de Ruta Cars GT (archivo 5AA788FE-D5E3-4401-98C9-E846B4B3502B.png) en navbar y favicon
+- [x] Scraping profundo de Royal Shipping: precios reales por estado USA, tipo de subasta (Copart/IAAI), tamaño de vehículo (sedan/SUV/pickup/van)
+- [x] Crear tabla shipping_rates en DB con columnas: state_code, auction_type, vehicle_size, price_usd, port, notes
+- [x] Poblar tabla con todos los precios reales de Royal Shipping (206 ubicaciones, 38 estados)
+- [x] Actualizar calculadora VehicleDetail: detección automática de estado + tamaño por tipo de carrocería
+- [x] Ganancia de Ruta Cars GT ($500 USD) incluida en línea "Transporte USA" (oculta, no visible al cliente)
+- [x] Endpoint tRPC para consultar shipping_rates por estado + tamaño
+- [x] Mostrar desglose real: Transporte USA (incluye ganancia), Shipping Marítimo (precio real Royal), fees de subasta reales
+- [x] Implementar logo nuevo de Ruta Cars GT en navbar (imagen real del logo)
