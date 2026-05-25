@@ -13,10 +13,6 @@ function getApiKey(): string {
 }
 
 // ─── Stale-while-revalidate cache ────────────────────────────────────────────
-// Entries have two TTLs:
-//   freshUntil  → serve directly, no API call
-//   staleUntil  → serve stale data immediately AND trigger background refresh
-// On 429, we always return stale data if available instead of throwing.
 interface CacheEntry<T> {
   data: T;
   freshUntil: number;
@@ -35,7 +31,7 @@ function setCacheEntry<T>(key: string, data: T, freshTtlMs: number): void {
   cache.set(key, {
     data,
     freshUntil: Date.now() + freshTtlMs,
-    staleUntil: Date.now() + freshTtlMs * 4, // stale window = 4x fresh TTL
+    staleUntil: Date.now() + freshTtlMs * 6, // stale window = 6x fresh TTL
   });
   if (cache.size > 500) {
     const firstKey = cache.keys().next().value;
@@ -44,14 +40,14 @@ function setCacheEntry<T>(key: string, data: T, freshTtlMs: number): void {
 }
 
 // ─── In-flight deduplication ──────────────────────────────────────────────────
-// If two requests for the same URL arrive simultaneously, only one hits the API.
 const inFlight = new Map<string, Promise<unknown>>();
 
-// ─── Serialized request queue (1 request at a time, 1.2s apart) ──────────────
+// ─── True serial request queue ────────────────────────────────────────────────
+// Only ONE request is active at a time. The next request starts only AFTER
+// the previous fetch fully completes (response received). Min 2.5s between calls.
+const MIN_GAP_MS = 2500;
 let lastCallTime = 0;
-type QueueTask = () => void;
-const queue: QueueTask[] = [];
-let queueRunning = false;
+let queuePromise: Promise<void> = Promise.resolve();
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
   const url = new URL(`${BASE_URL}${path}`);
@@ -63,76 +59,66 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString();
 }
 
-async function executeNext(): Promise<void> {
-  const task = queue.shift();
-  if (!task) { queueRunning = false; return; }
-  const elapsed = Date.now() - lastCallTime;
-  const MIN_GAP = 2000; // 2 seconds between requests to avoid 429
-  if (elapsed < MIN_GAP) await new Promise(r => setTimeout(r, MIN_GAP - elapsed));
-  lastCallTime = Date.now();
-  task();
-}
-
 function enqueueRequest(urlStr: string): Promise<Response> {
-  return new Promise((resolve, reject) => {
-    const task = async () => {
-      try {
-        const res = await fetch(urlStr, {
-          headers: { "x-api-key": getApiKey(), "accept": "application/json" },
-        });
-        resolve(res);
-      } catch (e) {
-        reject(e);
-      } finally {
-        executeNext();
-      }
-    };
-    queue.push(task);
-    if (!queueRunning) {
-      queueRunning = true;
-      executeNext();
+  // Chain onto the existing queue promise so requests are truly serial
+  const result = queuePromise.then(async (): Promise<Response> => {
+    const elapsed = Date.now() - lastCallTime;
+    if (elapsed < MIN_GAP_MS) {
+      await new Promise(r => setTimeout(r, MIN_GAP_MS - elapsed));
     }
+    lastCallTime = Date.now();
+    const res = await fetch(urlStr, {
+      headers: { "x-api-key": getApiKey(), "accept": "application/json" },
+    });
+    return res;
   });
+  // Update the shared queue tail (suppress unhandled rejection on the chain)
+  queuePromise = result.then(() => {}, () => {});
+  return result;
 }
 
-// ─── Core fetch with cache + dedup + queue + retry ───────────────────────────
+// ─── Core fetch with cache + dedup + serial queue + retry ────────────────────
 async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>, freshTtlMs = 0): Promise<T> {
   const urlStr = buildUrl(path, params);
 
-  // 1. Fresh cache hit → return immediately
+  // 1. Fresh cache hit → return immediately, no API call
   if (freshTtlMs > 0) {
     const entry = getCacheEntry<T>(urlStr);
     if (entry && Date.now() < entry.freshUntil) return entry.data;
   }
 
-  // 2. Deduplicate in-flight requests for the same URL
+  // 2. Stale cache hit → return stale immediately AND trigger background refresh
+  if (freshTtlMs > 0) {
+    const entry = getCacheEntry<T>(urlStr);
+    if (entry) {
+      // Return stale data right away; refresh in background without blocking
+      console.log(`[AuctionsAPI] Returning stale cache, refreshing in background: ${urlStr.slice(0, 80)}`);
+      apiFetchBackground(urlStr, freshTtlMs);
+      return entry.data;
+    }
+  }
+
+  // 3. Deduplicate in-flight requests for the same URL
   const existing = inFlight.get(urlStr);
   if (existing) return existing as Promise<T>;
 
   const promise = (async (): Promise<T> => {
     try {
-      // 3. Try fetching with queue + retry on 429
-      let staleData: T | null = null;
-      if (freshTtlMs > 0) {
-        const entry = getCacheEntry<T>(urlStr);
-        if (entry) staleData = entry.data;
-      }
-
-      const delays = [0, 3000, 8000, 15000]; // Aggressive backoff on 429
+      // Retry with backoff on 429
+      const backoffs = [0, 4000, 10000]; // max 3 attempts
       let lastError: Error | null = null;
 
-      for (let attempt = 0; attempt < delays.length; attempt++) {
-        if (delays[attempt] > 0) await new Promise(r => setTimeout(r, delays[attempt]));
+      for (let attempt = 0; attempt < backoffs.length; attempt++) {
+        if (backoffs[attempt] > 0) {
+          console.warn(`[AuctionsAPI] Backoff ${backoffs[attempt]}ms before retry ${attempt + 1}`);
+          await new Promise(r => setTimeout(r, backoffs[attempt]));
+        }
 
         const res = await enqueueRequest(urlStr);
 
         if (res.status === 429) {
           lastError = new Error(`AuctionsAPI error 429: demasiadas solicitudes, intenta de nuevo en unos segundos`);
-          // If we have stale data, return it immediately instead of retrying forever
-          if (staleData !== null) {
-            console.warn(`[AuctionsAPI] 429 on attempt ${attempt + 1}, returning stale cache for: ${urlStr}`);
-            return staleData;
-          }
+          console.warn(`[AuctionsAPI] 429 on attempt ${attempt + 1} for: ${urlStr.slice(0, 80)}`);
           continue;
         }
 
@@ -146,11 +132,6 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
         return data;
       }
 
-      // All retries exhausted — return stale if available, else throw
-      if (staleData !== null) {
-        console.warn(`[AuctionsAPI] All retries exhausted, returning stale cache for: ${urlStr}`);
-        return staleData;
-      }
       throw lastError ?? new Error("AuctionsAPI: máximo de reintentos alcanzado");
     } finally {
       inFlight.delete(urlStr);
@@ -159,6 +140,27 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
 
   inFlight.set(urlStr, promise);
   return promise;
+}
+
+// Background refresh — fires and forgets, never throws to caller
+function apiFetchBackground(urlStr: string, freshTtlMs: number): void {
+  // Don't start a background refresh if one is already in flight for this URL
+  if (inFlight.has(urlStr)) return;
+  const promise = (async () => {
+    try {
+      const res = await enqueueRequest(urlStr);
+      if (res.ok) {
+        const data = await res.json();
+        setCacheEntry(urlStr, data, freshTtlMs);
+        console.log(`[AuctionsAPI] Background refresh done: ${urlStr.slice(0, 80)}`);
+      }
+    } catch (e) {
+      console.warn(`[AuctionsAPI] Background refresh failed: ${e}`);
+    } finally {
+      inFlight.delete(urlStr);
+    }
+  })();
+  inFlight.set(urlStr, promise);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
