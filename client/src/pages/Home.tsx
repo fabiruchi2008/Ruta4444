@@ -55,14 +55,20 @@ function normalizeVehicle(v: any) {
 }
 
 export default function Home() {
-  // Delay featured vehicles load by 2s to avoid competing with other queries on mount
+  // Delay featured vehicles load by 6s to avoid competing with catalog/other queries
   const [featuredEnabled, setFeaturedEnabled] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setFeaturedEnabled(true), 2000);
+    const t = setTimeout(() => setFeaturedEnabled(true), 6000);
     return () => clearTimeout(t);
   }, []);
   const featuredInput = useMemo(() => ({ per_page: 8, exclude_expired_auctions: 1, bid_price_to: 15000 }), []);
-  const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput, { enabled: featuredEnabled });
+  const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput, {
+    enabled: featuredEnabled,
+    staleTime: 10 * 60 * 1000,     // 10 min fresh — home page doesn't need real-time prices
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,   // don't refetch when switching tabs
+    retry: false,                  // server handles retries internally
+  });
   const featuredVehicles = (featuredData as any)?.data?.slice(0, 6) || [];
 
   return (

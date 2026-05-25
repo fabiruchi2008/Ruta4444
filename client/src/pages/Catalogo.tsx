@@ -488,6 +488,13 @@ export default function Catalogo() {
     ...(savedFilters || {}),
   });
 
+  // Small initial delay so the catalog query doesn't fire simultaneously with Home/other pages
+  const [catalogReady, setCatalogReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setCatalogReady(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search_query);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(filters.search_query), 600);
@@ -498,13 +505,32 @@ export default function Catalogo() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [makeSearch, setMakeSearch] = useState("");
 
-  // Dynamic data
-  const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery(undefined, { enabled: showFilters });
+  // Delay loading of filter data to avoid simultaneous requests on mount
+  // manufacturers loads 3s after filters open, damages loads 5s after
+  const [manufacturersEnabled, setManufacturersEnabled] = useState(false);
+  const [damagesEnabled, setDamagesEnabled] = useState(false);
+  useEffect(() => {
+    if (!showFilters) return;
+    const t1 = setTimeout(() => setManufacturersEnabled(true), 500);
+    const t2 = setTimeout(() => setDamagesEnabled(true), 2500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [showFilters]);
+
+  // Dynamic data — staggered to avoid 429
+  const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery(undefined, {
+    enabled: manufacturersEnabled,
+    staleTime: 60 * 60 * 1000, // 1 hour — manufacturer list rarely changes
+    gcTime: 2 * 60 * 60 * 1000,
+  });
   const { data: models } = trpc.vehicles.models.useQuery(
     { manufacturerId: filters.manufacturer_id! },
-    { enabled: showFilters && !!filters.manufacturer_id }
+    { enabled: manufacturersEnabled && !!filters.manufacturer_id, staleTime: 60 * 60 * 1000 }
   );
-  const { data: damagesData } = trpc.vehicles.damages.useQuery(undefined, { enabled: showFilters });
+  const { data: damagesData } = trpc.vehicles.damages.useQuery(undefined, {
+    enabled: damagesEnabled,
+    staleTime: 60 * 60 * 1000, // 1 hour — damage types rarely change
+    gcTime: 2 * 60 * 60 * 1000,
+  });
 
   const allMakes: any[] = useMemo(() => {
     const list = (manufacturers as any)?.data || [];
@@ -562,10 +588,14 @@ export default function Catalogo() {
     { lot: debouncedSearch.trim() },
     { enabled: searchType === "lot" && debouncedSearch.trim().length >= 6 }
   );
-  // Auto-refresh every 5 minutes to keep prices current
+  // Auto-refresh every 10 minutes to keep prices current (reduced to avoid 429)
   const generalQuery = trpc.vehicles.search.useQuery(queryInput, {
-    enabled: searchType === "general",
-    refetchInterval: 5 * 60 * 1000,
+    enabled: catalogReady && searchType === "general",
+    staleTime: 3 * 60 * 1000,   // 3 minutes fresh
+    gcTime: 10 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000, // refresh every 10 min instead of 5
+    refetchOnWindowFocus: false,     // don't refetch when switching tabs
+    retry: false,                    // don't retry on error — server handles retries
   });
 
   const isLoading = searchType === "vin" ? vinQuery.isLoading : searchType === "lot" ? lotQuery.isLoading : generalQuery.isLoading;

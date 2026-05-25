@@ -67,7 +67,7 @@ async function executeNext(): Promise<void> {
   const task = queue.shift();
   if (!task) { queueRunning = false; return; }
   const elapsed = Date.now() - lastCallTime;
-  const MIN_GAP = 1200; // 1.2 seconds between requests
+  const MIN_GAP = 2000; // 2 seconds between requests to avoid 429
   if (elapsed < MIN_GAP) await new Promise(r => setTimeout(r, MIN_GAP - elapsed));
   lastCallTime = Date.now();
   task();
@@ -118,7 +118,7 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
         if (entry) staleData = entry.data;
       }
 
-      const delays = [0, 2000, 5000, 10000];
+      const delays = [0, 3000, 8000, 15000]; // Aggressive backoff on 429
       let lastError: Error | null = null;
 
       for (let attempt = 0; attempt < delays.length; attempt++) {
