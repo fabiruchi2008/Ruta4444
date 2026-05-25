@@ -158,3 +158,9 @@
 - [x] Endpoint admin.calculateReal: costo real sin Gestión Internacional
 - [x] Página AdminCalculadora.tsx: inputs + desglose completo sin ganancia
 - [x] Ruta /admin/calculadora y enlace en el panel admin (botón naranja)
+
+## Factura / Cotización PDF Admin
+
+- [x] Página AdminFactura.tsx: buscar por lote, campos editables (nombre, DPI, teléfono, notas), vista previa
+- [x] Generación de PDF con diseño Ruta Cars GT (logo, colores, desglose, foto del carro)
+- [x] Ruta /admin/factura y botón "Cotización PDF" en panel admin

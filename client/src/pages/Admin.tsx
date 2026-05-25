@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Car, FileText, Settings, Users, TrendingUp, DollarSign, Eye, CheckCircle, XCircle, Loader2, Calculator } from "lucide-react";
+import { BarChart3, Car, FileText, Settings, Users, TrendingUp, DollarSign, Eye, CheckCircle, XCircle, Loader2, Calculator, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,11 +122,18 @@ export default function Admin() {
                 <Settings className="w-4 h-4 mr-2" /> Configuración
               </TabsTrigger>
             </TabsList>
-            <Link href="/admin/calculadora">
-              <Button className="bg-[#F97316] hover:bg-[#F97316]/90 text-white font-bold btn-press flex items-center gap-2">
-                <Calculator className="w-4 h-4" /> Calculadora Interna
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/admin/factura">
+                <Button className="bg-[#00C8E0] text-[#080D18] font-bold btn-press flex items-center gap-2">
+                  <Receipt className="w-4 h-4" /> Cotización PDF
+                </Button>
+              </Link>
+              <Link href="/admin/calculadora">
+                <Button className="bg-[#F97316] hover:bg-[#F97316]/90 text-white font-bold btn-press flex items-center gap-2">
+                  <Calculator className="w-4 h-4" /> Calculadora Interna
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Quotes Tab */}
