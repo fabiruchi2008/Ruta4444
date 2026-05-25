@@ -89,15 +89,36 @@ const US_STATES = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeVehicle(vehicle: any) {
-  const primaryLot = vehicle.lots?.[0] || {};
+  const lots: any[] = vehicle.lots || [];
+  const primaryLot = lots[0] || {};
   const domainId = primaryLot.domain?.id ?? vehicle.domain_id;
   const platform = domainId === 3 ? "copart" : "iaai";
   const platformLabel = domainId === 3 ? "Copart" : "IAAI";
   const platformColor = domainId === 3 ? "#00C8E0" : "#F97316";
   const images = primaryLot.images?.normal || primaryLot.images?.small || [];
   const primaryImage = images[0] || vehicle.image_url || null;
-  const bidPrice = primaryLot.bid ?? primaryLot.final_bid ?? vehicle.bid_price ?? 0;
-  const buyNowPrice = primaryLot.buy_now_price ?? vehicle.buy_now_price ?? null;
+
+  // The real API field for Buy Now price is `lot.buy_now` (a number).
+  // `lot.buy_now_price` is an older alias kept for compatibility.
+  const buyNowPrice: number | null = (() => {
+    for (const lot of lots) {
+      // Prefer buy_now (real field), fall back to buy_now_price (alias)
+      const p = (lot.buy_now != null && lot.buy_now > 0)
+        ? lot.buy_now
+        : (lot.buy_now_price != null && lot.buy_now_price > 0 ? lot.buy_now_price : null);
+      if (p != null) return p;
+    }
+    return vehicle.buy_now ?? vehicle.buy_now_price ?? null;
+  })();
+
+  const rawBid = primaryLot.bid ?? primaryLot.final_bid ?? vehicle.bid_price ?? null;
+
+  // Show bid as "Subasta Actual" only when it's different from the Buy Now price
+  const bidPrice = (() => {
+    if (rawBid == null || rawBid <= 0) return 0;
+    if (buyNowPrice != null && rawBid === buyNowPrice) return 0; // same value, don't show twice
+    return rawBid;
+  })();
   const stateCode = primaryLot.location?.state?.code ?? vehicle.state_code ?? null;
   const odometer = primaryLot.odometer?.mi ?? vehicle.odometer ?? null;
   const fuelType = vehicle.fuel?.name ?? vehicle.fuel_type ?? null;
@@ -460,11 +481,16 @@ export default function Catalogo() {
   );
   const searchType = detectSearchType(debouncedSearch);
 
-  const queryInput = useMemo(() => ({
-    ...debouncedFilters,
-    exclude_expired_auctions: 1,
-    status: 0,
-  }), [debouncedFilters]);
+  const queryInput = useMemo(() => {
+    const isBuyNow = debouncedFilters.buy_now === 1;
+    return {
+      ...debouncedFilters,
+      status: 0,
+      // Buy Now vehicles often have past sale dates but are still available;
+      // exclude_expired_auctions would incorrectly filter them out.
+      ...(isBuyNow ? {} : { exclude_expired_auctions: 1 }),
+    };
+  }, [debouncedFilters]);
 
   const vinQuery = trpc.vehicles.searchByVin.useQuery(
     { vin: debouncedSearch.trim() },

@@ -187,7 +187,10 @@ export interface AuctionLot {
   } | null;
   bid: number | null;
   final_bid: number | null;
-  buy_now_price: number | null;
+  /** buy_now is the actual field name returned by AuctionsAPI (a number = Buy Now price, or null) */
+  buy_now: number | null;
+  /** buy_now_price is an alias some API versions use — keep for compatibility */
+  buy_now_price?: number | null;
   condition: { id: number; name: string } | null;
   damage: { main: { id: number; name: string } | null; secondary: { id: number; name: string } | null } | null;
   odometer: { mi: number | null; km: number | null } | null;
@@ -313,8 +316,9 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       const bLot = b.lots?.[0];
       let aVal = 0, bVal = 0;
       if (sort === "buy_now_price") {
-        aVal = aLot?.buy_now_price ?? 0;
-        bVal = bLot?.buy_now_price ?? 0;
+        // Use buy_now (real field) or buy_now_price (alias) for sorting
+        aVal = aLot?.buy_now ?? aLot?.buy_now_price ?? 0;
+        bVal = bLot?.buy_now ?? bLot?.buy_now_price ?? 0;
       } else if (sort === "bid") {
         aVal = aLot?.bid ?? aLot?.final_bid ?? 0;
         bVal = bLot?.bid ?? bLot?.final_bid ?? 0;
