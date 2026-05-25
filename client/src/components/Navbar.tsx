@@ -43,7 +43,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <img
-              src="/manus-storage/ruta-cars-logo_d89729c2.png"
+              src="/manus-storage/ruta-cars-logo-v2_407315c0.png"
               alt="Ruta Cars GT"
               className="h-12 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-lg"
             />
