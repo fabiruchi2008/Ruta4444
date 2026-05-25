@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Filter, X, Car, Fuel, Gauge, Calendar, MapPin,
-  Calculator, MessageCircle, ArrowUpDown, Tag, Zap, ChevronDown, ChevronUp,
-  SlidersHorizontal, RotateCcw, Gavel, RefreshCw
+  Search, X, Car, Fuel, Gauge, Calendar, MapPin,
+  Calculator, MessageCircle, Tag, Zap, ChevronDown, ChevronUp,
+  RotateCcw, Gavel, Key, Settings2, ShieldCheck, ArrowUpDown,
+  ChevronLeft, ChevronRight, SlidersHorizontal, CheckSquare, Square
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,54 +64,34 @@ function tES(map: Record<string, string>, val: string | null | undefined): strin
 // ─── Static filter data ───────────────────────────────────────────────────────
 
 const DOMAINS = [
-  { id: 3, label: "Copart" },
-  { id: 1, label: "IAAI" },
+  { id: 3, label: "Copart", color: "#00C8E0" },
+  { id: 1, label: "IAAI", color: "#F97316" },
 ];
 
 const BODY_TYPES = [
-  { id: 1, label: "Sedán" },
-  { id: 2, label: "Familiar / Wagon" },
-  { id: 3, label: "Coupé" },
-  { id: 4, label: "Pickup / Camioneta" },
-  { id: 5, label: "SUV" },
-  { id: 6, label: "Convertible" },
-  { id: 7, label: "Van / Furgoneta" },
-  { id: 11, label: "Hatchback" },
-  { id: 20, label: "Liftback" },
-  { id: 27, label: "Auto Deportivo" },
+  { id: 1, label: "Sedán" }, { id: 2, label: "Familiar / Wagon" },
+  { id: 3, label: "Coupé" }, { id: 4, label: "Pickup / Camioneta" },
+  { id: 5, label: "SUV" }, { id: 6, label: "Convertible" },
+  { id: 7, label: "Van / Furgoneta" }, { id: 11, label: "Hatchback" },
+  { id: 20, label: "Liftback" }, { id: 27, label: "Auto Deportivo" },
 ];
 
 const FUEL_TYPES = [
-  { id: 1, label: "Gasolina" },
-  { id: 2, label: "Diésel" },
-  { id: 3, label: "Eléctrico" },
-  { id: 4, label: "Híbrido" },
-  { id: 5, label: "Gas Natural" },
-  { id: 6, label: "Flex (E85)" },
+  { id: 1, label: "Gasolina" }, { id: 2, label: "Diésel" },
+  { id: 3, label: "Híbrido" }, { id: 4, label: "Eléctrico" },
+  { id: 5, label: "Flex (E85)" }, { id: 6, label: "Gas Natural" },
 ];
 
 const TRANSMISSIONS = [
-  { id: 1, label: "Automático" },
-  { id: 2, label: "Manual" },
-  { id: 3, label: "CVT" },
+  { id: 1, label: "Automático" }, { id: 2, label: "Manual" },
+  { id: 3, label: "CVT" }, { id: 4, label: "Doble Embrague" },
 ];
 
 const DRIVE_WHEELS = [
-  { id: 1, label: "FWD — Tracción Delantera" },
-  { id: 2, label: "RWD — Tracción Trasera" },
-  { id: 3, label: "AWD — Tracción Total" },
-  { id: 4, label: "4WD / 4x4" },
+  { id: 1, label: "Delantera (FWD)" }, { id: 2, label: "Trasera (RWD)" },
+  { id: 3, label: "4x4 (4WD)" }, { id: 4, label: "AWD (Todo Terreno)" },
 ];
 
-const TITLE_CONDITIONS = [
-  { id: 1, label: "Título Limpio" },
-  { id: 2, label: "Título Salvage" },
-  { id: 3, label: "Título Reconstruido" },
-  { id: 4, label: "Solo Piezas" },
-  { id: 5, label: "Certificado de Destrucción" },
-];
-
-// Condición de funcionamiento (run & drive)
 const RUN_CONDITIONS = [
   { id: 1, label: "Enciende y Maneja" },
   { id: 2, label: "Motor Enciende" },
@@ -120,13 +101,15 @@ const RUN_CONDITIONS = [
 
 const CYLINDERS = [3, 4, 5, 6, 8, 10, 12];
 
+const TITLE_CONDITIONS = [
+  { id: 1, label: "Salvage" }, { id: 2, label: "Clean" },
+  { id: 3, label: "Rebuilt" }, { id: 4, label: "Parts Only" },
+];
+
 const SALE_DATE_OPTIONS = [
-  { value: 1, label: "Hoy" },
-  { value: 2, label: "Mañana" },
-  { value: 3, label: "Próximos 3 días" },
-  { value: 7, label: "Próximos 7 días" },
-  { value: 14, label: "Próximas 2 semanas" },
-  { value: 30, label: "Próximo mes" },
+  { value: 1, label: "Hoy" }, { value: 3, label: "Próximos 3 días" },
+  { value: 7, label: "Esta semana" }, { value: 14, label: "Próximas 2 semanas" },
+  { value: 30, label: "Este mes" },
 ];
 
 const US_STATES = [
@@ -138,63 +121,59 @@ const US_STATES = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function normalizeVehicle(vehicle: any) {
-  const lots: any[] = vehicle.lots || [];
-  const primaryLot = lots[0] || {};
-  const domainId = primaryLot.domain?.id ?? vehicle.domain_id;
-  const platform = domainId === 3 ? "copart" : "iaai";
-  const platformLabel = domainId === 3 ? "Copart" : "IAAI";
-  const platformColor = domainId === 3 ? "#00C8E0" : "#F97316";
-  const images = primaryLot.images?.normal || primaryLot.images?.small || [];
-  const primaryImage = images[0] || vehicle.image_url || null;
-
-  // Real API field is lot.buy_now (number), buy_now_price is an alias
-  const buyNowPrice: number | null = (() => {
-    for (const lot of lots) {
-      const p = (lot.buy_now != null && lot.buy_now > 0)
-        ? lot.buy_now
-        : (lot.buy_now_price != null && lot.buy_now_price > 0 ? lot.buy_now_price : null);
-      if (p != null) return p;
-    }
-    return vehicle.buy_now ?? vehicle.buy_now_price ?? null;
-  })();
-
-  const rawBid = primaryLot.bid ?? primaryLot.final_bid ?? vehicle.bid_price ?? null;
-  const bidPrice = (() => {
-    if (rawBid == null || rawBid <= 0) return 0;
-    if (buyNowPrice != null && rawBid === buyNowPrice) return 0;
-    return rawBid;
-  })();
-
-  const stateCode = primaryLot.location?.state?.code ?? vehicle.state_code ?? null;
-  const odometer = primaryLot.odometer?.mi ?? vehicle.odometer ?? null;
-  const fuelType = vehicle.fuel?.name ?? vehicle.fuel_type ?? null;
-  const bodyType = vehicle.body_type?.name ?? vehicle.body_type ?? null;
-  const make = vehicle.manufacturer?.name ?? vehicle.make ?? "";
-  const model = vehicle.model?.name ?? vehicle.model ?? "";
-  const damageType = primaryLot.damage?.main?.name ?? vehicle.damage_type ?? null;
-  const lotNumber = primaryLot.lot ?? vehicle.lot_number ?? vehicle.id;
-  const saleDate = primaryLot.sale_date ?? vehicle.sale_date ?? null;
-  const transmission = vehicle.transmission?.name ?? vehicle.transmission ?? null;
-  const condition = primaryLot.condition?.name ?? null;
-
-  return {
-    ...vehicle,
-    platform, platformLabel, platformColor, primaryImage,
-    bidPrice, buyNowPrice, stateCode, odometer, fuelType,
-    bodyType, make, model, damageType, lotNumber, saleDate,
-    transmission, condition, domainId,
-  };
-}
-
-function formatDate(dateStr: string | null): string | null {
-  if (!dateStr) return null;
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString("es-GT", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return null;
+    return d.toLocaleDateString("es-GT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  } catch { return dateStr; }
+}
+
+function normalizeVehicle(raw: any) {
+  const lots: any[] = raw.lots || [];
+  const firstLot = lots[0] || {};
+
+  // Find buy_now price — API uses lot.buy_now (number)
+  let buyNowPrice: number | null = null;
+  for (const lot of lots) {
+    if (lot.buy_now && Number(lot.buy_now) > 0) {
+      buyNowPrice = Number(lot.buy_now);
+      break;
+    }
   }
+
+  const bidPrice = Number(firstLot.bid) || 0;
+  const platformId = firstLot.domain_id ?? raw.domain_id;
+  const platformLabel = platformId === 3 ? "Copart" : platformId === 1 ? "IAAI" : "Subasta";
+  const platformColor = platformId === 3 ? "#00C8E0" : platformId === 1 ? "#F97316" : "#8B5CF6";
+
+  return {
+    id: raw.id,
+    lotNumber: firstLot.lot_number || raw.lot_number,
+    vin: raw.vin,
+    year: raw.year,
+    make: raw.manufacturer?.name || raw.make || "",
+    model: raw.model?.name || raw.model || "",
+    bodyType: raw.body_type?.name || raw.body_type || "",
+    fuelType: raw.fuel_type?.name || raw.fuel_type || "",
+    transmission: raw.transmission?.name || raw.transmission || "",
+    condition: firstLot.condition?.name || firstLot.condition || raw.condition || "",
+    damageType: firstLot.damage?.name || firstLot.damage || raw.damage || "",
+    odometer: firstLot.odometer_mi ?? raw.odometer_mi ?? null,
+    stateCode: firstLot.state_code || raw.state_code || "",
+    location: firstLot.location || raw.location || "",
+    saleDate: firstLot.sale_date || raw.sale_date || null,
+    primaryImage: raw.images?.[0] || raw.primary_image || null,
+    bidPrice,
+    buyNowPrice,
+    platformLabel,
+    platformColor,
+    cylinders: raw.cylinders || firstLot.cylinders || null,
+    engineSize: raw.engine_size || null,
+    driveWheel: raw.drive_wheel?.name || raw.drive_wheel || "",
+    color: raw.color?.name || raw.color || "",
+    keys: firstLot.keys ?? null,
+  };
 }
 
 function detectSearchType(q: string): "vin" | "lot" | "general" {
@@ -202,215 +181,6 @@ function detectSearchType(q: string): "vin" | "lot" | "general" {
   if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(clean)) return "vin";
   if (/^\d{6,12}$/.test(clean)) return "lot";
   return "general";
-}
-
-// ─── VehicleCard ──────────────────────────────────────────────────────────────
-
-function VehicleCard({ vehicle: rawVehicle }: { vehicle: any }) {
-  const v = normalizeVehicle(rawVehicle);
-  const fuelLabel = tES(FUEL_ES, v.fuelType);
-  const transmissionLabel = tES(TRANSMISSION_ES, v.transmission);
-  const conditionLabel = tES(CONDITION_ES, v.condition);
-  const damageLabel = tES(DAMAGE_ES, v.damageType);
-  const bodyLabel = tES(BODY_TYPE_ES, v.bodyType) || v.bodyType || "";
-
-  const whatsappBuyNow = encodeURIComponent(
-    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber}) a $${v.buyNowPrice?.toLocaleString()} en ${v.platformLabel}. ¿Cómo procedo?`
-  );
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-[#141E30] border border-[#243048] rounded-2xl overflow-hidden card-hover group flex flex-col"
-    >
-      {/* Image */}
-      <div className="relative aspect-video bg-[#0F1624] overflow-hidden flex-shrink-0">
-        {v.primaryImage ? (
-          <img
-            src={v.primaryImage}
-            alt={`${v.year} ${v.make} ${v.model}`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Car className="w-16 h-16 text-[#243048]" />
-          </div>
-        )}
-
-        {/* Top-left: platform + comprar ahora */}
-        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
-          <span className="px-2 py-0.5 rounded-md text-xs font-bold text-[#080D18]" style={{ backgroundColor: v.platformColor }}>
-            {v.platformLabel}
-          </span>
-          {v.buyNowPrice && (
-            <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[#22c55e] text-white flex items-center gap-1">
-              <Zap className="w-2.5 h-2.5" /> ${v.buyNowPrice.toLocaleString()}
-            </span>
-          )}
-        </div>
-
-        {/* Top-right: sale date */}
-        {v.saleDate && (
-          <div className="absolute top-2.5 right-2.5">
-            <span className="px-2 py-0.5 rounded-md text-xs bg-black/70 text-slate-200 backdrop-blur-sm flex items-center gap-1">
-              <Calendar className="w-2.5 h-2.5" />
-              {formatDate(v.saleDate)}
-            </span>
-          </div>
-        )}
-
-        {/* Bottom-right: damage in Spanish */}
-        {damageLabel && (
-          <div className="absolute bottom-2.5 right-2.5">
-            <span className="px-2 py-0.5 rounded-md text-xs bg-black/70 text-amber-300 backdrop-blur-sm font-medium">
-              {damageLabel}
-            </span>
-          </div>
-        )}
-
-        {/* Bottom-left: condition badge */}
-        {conditionLabel && (
-          <div className="absolute bottom-2.5 left-2.5">
-            <span className={`px-2 py-0.5 rounded-md text-xs backdrop-blur-sm font-medium ${
-              conditionLabel === "Enciende y Maneja"
-                ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                : conditionLabel === "Motor Enciende"
-                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                : "bg-red-500/20 text-red-400 border border-red-500/30"
-            }`}>
-              {conditionLabel}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-3 flex flex-col flex-1">
-        <div>
-          <h3 className="font-semibold text-white text-base leading-tight line-clamp-1 tracking-tight">
-            {v.year} {v.make} {v.model}
-          </h3>
-          <p className="text-slate-500 text-xs mt-0.5 font-medium">{bodyLabel || "Vehículo"}</p>
-        </div>
-
-        {/* Specs grid */}
-        <div className="grid grid-cols-2 gap-1.5 text-xs text-slate-400">
-          {v.odometer != null && (
-            <div className="flex items-center gap-1.5">
-              <Gauge className="w-3 h-3 flex-shrink-0 text-slate-500" />
-              <span className="font-medium">{v.odometer.toLocaleString()} mi</span>
-            </div>
-          )}
-          {fuelLabel && (
-            <div className="flex items-center gap-1.5">
-              <Fuel className="w-3 h-3 flex-shrink-0 text-slate-500" />
-              <span className="truncate font-medium">{fuelLabel}</span>
-            </div>
-          )}
-          {v.stateCode && (
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-3 h-3 flex-shrink-0 text-slate-500" />
-              <span className="font-medium">{v.stateCode}</span>
-            </div>
-          )}
-          {transmissionLabel && (
-            <div className="flex items-center gap-1.5">
-              <ArrowUpDown className="w-3 h-3 flex-shrink-0 text-slate-500" />
-              <span className="truncate font-medium">{transmissionLabel}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Price section */}
-        <div className="border-t border-[#243048]/60 pt-3 mt-auto space-y-3">
-          {/* Prices */}
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {v.bidPrice > 0 && (
-              <div>
-                <p className="text-slate-500 text-xs mb-0.5 flex items-center gap-1">
-                  <Gavel className="w-2.5 h-2.5" />
-                  {v.buyNowPrice ? "Puja Actual" : "Subasta Actual"}
-                </p>
-                <p className="text-[#00C8E0] font-bold text-xl leading-none">${v.bidPrice.toLocaleString()}</p>
-              </div>
-            )}
-            {v.buyNowPrice && (
-              <div>
-                <p className="text-slate-500 text-xs mb-0.5 flex items-center gap-1">
-                  <Zap className="w-2.5 h-2.5 text-[#22c55e]" />
-                  Comprar Ahora
-                </p>
-                <p className="text-[#22c55e] font-bold text-xl leading-none">${v.buyNowPrice.toLocaleString()}</p>
-              </div>
-            )}
-            {!v.bidPrice && !v.buyNowPrice && (
-              <p className="text-slate-500 text-sm italic">Sin precio disponible</p>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {/* If has buy now: primary button is "Comprar Ahora" */}
-            {v.buyNowPrice ? (
-              <>
-                <a
-                  href={`https://wa.me/50231220803?text=${whatsappBuyNow}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1"
-                >
-                  <Button
-                    size="sm"
-                    className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold btn-press text-xs"
-                  >
-                    <Zap className="w-3.5 h-3.5 mr-1" /> Comprar Ahora
-                  </Button>
-                </a>
-                <Link href={`/vehiculo/${v.lotNumber || v.id}`}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-[#243048] text-slate-300 hover:text-white hover:border-[#00C8E0]/50 btn-press"
-                    title="Ver costos de importación"
-                  >
-                    <Calculator className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="flex-1">
-                  <Button
-                    size="sm"
-                    className="w-full bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-bold btn-press text-xs"
-                  >
-                    <Calculator className="w-3.5 h-3.5 mr-1" /> Ver Costos
-                  </Button>
-                </Link>
-                <a
-                  href={`https://wa.me/50231220803?text=${encodeURIComponent(
-                    `Hola Ruta Cars GT, me interesa el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber || v.id})`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-[#243048] text-[#25D366] hover:text-white hover:border-[#25D366]/50 btn-press"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                  </Button>
-                </a>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
 }
 
 // ─── Persist catalog state ────────────────────────────────────────────────────
@@ -457,7 +227,7 @@ const DEFAULT_FILTERS: CatalogFilters = {
   drive_wheel: undefined, color: undefined, cylinders: undefined,
   condition: undefined, odometer_from_mi: undefined, odometer_to_mi: undefined,
   sale_date_in_days: undefined, sort: undefined, order: undefined,
-  page: 1, per_page: 24,
+  page: 1, per_page: 20,
 };
 
 function loadSavedFilters(): Partial<CatalogFilters> | null {
@@ -479,6 +249,314 @@ function countActiveFilters(f: CatalogFilters): number {
   return keys.filter(k => f[k] !== undefined && f[k] !== "").length;
 }
 
+// ─── VehicleRow (horizontal list item) ───────────────────────────────────────
+
+function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
+  const v = normalizeVehicle(rawVehicle);
+  const fuelLabel = tES(FUEL_ES, v.fuelType);
+  const transmissionLabel = tES(TRANSMISSION_ES, v.transmission);
+  const conditionLabel = tES(CONDITION_ES, v.condition);
+  const damageLabel = tES(DAMAGE_ES, v.damageType);
+
+  const whatsappBuyNow = encodeURIComponent(
+    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber}) a $${v.buyNowPrice?.toLocaleString()} en ${v.platformLabel}. ¿Cómo procedo?`
+  );
+  const whatsappAuction = encodeURIComponent(
+    `Hola Ruta Cars GT, me interesa el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber || v.id}) en ${v.platformLabel}`
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden hover:border-[#00C8E0]/30 transition-all duration-200 group"
+    >
+      <div className="flex flex-col sm:flex-row">
+        {/* ── Image ── */}
+        <div className="relative sm:w-52 lg:w-60 flex-shrink-0 bg-[#0B1120] overflow-hidden">
+          <div className="aspect-[4/3] sm:aspect-auto sm:h-full min-h-[140px]">
+            {v.primaryImage ? (
+              <img
+                src={v.primaryImage}
+                alt={`${v.year} ${v.make} ${v.model}`}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Car className="w-12 h-12 text-[#1F2D45]" />
+              </div>
+            )}
+          </div>
+
+          {/* Platform badge */}
+          <div className="absolute top-2 left-2">
+            <span
+              className="px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide uppercase"
+              style={{ backgroundColor: v.platformColor, color: "#080D18" }}
+            >
+              {v.platformLabel}
+            </span>
+          </div>
+
+          {/* Sale date */}
+          {v.saleDate && (
+            <div className="absolute bottom-2 left-2 right-2">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm text-[10px] text-slate-300 font-medium">
+                <Calendar className="w-2.5 h-2.5 flex-shrink-0" />
+                {formatDate(v.saleDate)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Details ── */}
+        <div className="flex-1 p-4 flex flex-col sm:flex-row gap-4 min-w-0">
+          {/* Left: title + specs */}
+          <div className="flex-1 min-w-0 space-y-2.5">
+            {/* Title row */}
+            <div>
+              <div className="flex items-start gap-2 flex-wrap">
+                <h3 className="font-bold text-white text-base leading-tight tracking-tight">
+                  {v.year} {v.make?.toUpperCase()} {v.model}
+                </h3>
+                {v.buyNowPrice && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/30 uppercase tracking-wider flex-shrink-0">
+                    Comprar Ahora
+                  </span>
+                )}
+              </div>
+              {/* VIN + Lot */}
+              <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                {v.vin && (
+                  <span className="text-slate-500 text-[10px] font-mono flex items-center gap-1">
+                    <ShieldCheck className="w-2.5 h-2.5" /> {v.vin}
+                  </span>
+                )}
+                {v.lotNumber && (
+                  <span className="text-slate-500 text-[10px] font-mono flex items-center gap-1">
+                    <Tag className="w-2.5 h-2.5" /> {v.lotNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Spec pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {v.keys !== null && (
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  v.keys ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
+                }`}>
+                  <Key className="w-2.5 h-2.5" />
+                  {v.keys ? "Llaves disponibles" : "Sin llaves"}
+                </span>
+              )}
+              {transmissionLabel && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#1F2D45] text-slate-300 border border-[#243048]">
+                  <Settings2 className="w-2.5 h-2.5" /> {transmissionLabel}
+                </span>
+              )}
+              {v.driveWheel && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#1F2D45] text-slate-300 border border-[#243048]">
+                  {v.driveWheel}
+                </span>
+              )}
+              {v.cylinders && v.engineSize && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#1F2D45] text-slate-300 border border-[#243048]">
+                  {v.engineSize} · {v.cylinders} cil.
+                </span>
+              )}
+              {fuelLabel && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#1F2D45] text-slate-300 border border-[#243048]">
+                  <Fuel className="w-2.5 h-2.5" /> {fuelLabel}
+                </span>
+              )}
+            </div>
+
+            {/* Info grid */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+              {v.odometer != null && (
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Odómetro</span>
+                  <span className="font-semibold text-slate-200">{v.odometer.toLocaleString()} mi</span>
+                </div>
+              )}
+              {(v.location || v.stateCode) && (
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Ubicación</span>
+                  <span className="font-semibold text-slate-200 truncate">{v.location || v.stateCode}</span>
+                </div>
+              )}
+              {damageLabel && (
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Daño</span>
+                  <span className="font-semibold text-amber-400">{damageLabel}</span>
+                </div>
+              )}
+              {conditionLabel && (
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Condición</span>
+                  <span className={`font-semibold ${
+                    conditionLabel === "Enciende y Maneja" ? "text-green-400"
+                    : conditionLabel === "Motor Enciende" ? "text-yellow-400"
+                    : "text-red-400"
+                  }`}>{conditionLabel}</span>
+                </div>
+              )}
+              {v.color && (
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Color</span>
+                  <span className="font-semibold text-slate-200">{v.color}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: prices + actions */}
+          <div className="sm:w-44 lg:w-52 flex-shrink-0 flex flex-col justify-between gap-3">
+            {/* Prices */}
+            <div className="space-y-2">
+              {/* Buy Now price — highlighted */}
+              {v.buyNowPrice && (
+                <div className="bg-[#0d2818] border border-[#22c55e]/25 rounded-lg p-2.5">
+                  <p className="text-[#22c55e] text-[9px] font-bold uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5" /> Comprar Ahora
+                  </p>
+                  <p className="text-[#22c55e] font-extrabold text-xl leading-none">
+                    ${v.buyNowPrice.toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {/* Bid / Auction price */}
+              {v.bidPrice > 0 && (
+                <div className="bg-[#0a1828] border border-[#00C8E0]/20 rounded-lg p-2.5">
+                  <p className="text-[#00C8E0] text-[9px] font-bold uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                    <Gavel className="w-2.5 h-2.5" />
+                    {v.buyNowPrice ? "Puja Actual" : "Subasta Actual"}
+                  </p>
+                  <p className="text-[#00C8E0] font-extrabold text-xl leading-none">
+                    ${v.bidPrice.toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {!v.bidPrice && !v.buyNowPrice && (
+                <div className="bg-[#111827] border border-[#1F2D45] rounded-lg p-2.5">
+                  <p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mb-0.5">Precio</p>
+                  <p className="text-slate-500 text-sm font-semibold">Sin precio</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-1.5">
+              {v.buyNowPrice ? (
+                <>
+                  <a
+                    href={`https://wa.me/50231220803?text=${whatsappBuyNow}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <button className="w-full py-2 px-3 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <Zap className="w-3 h-3" /> Comprar Ahora
+                    </button>
+                  </a>
+                  <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="block">
+                    <button className="w-full py-2 px-3 rounded-lg bg-[#1F2D45] hover:bg-[#243048] text-slate-300 hover:text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 border border-[#243048]">
+                      <Calculator className="w-3 h-3" /> Ver Costos
+                    </button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="block">
+                    <button className="w-full py-2 px-3 rounded-lg bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <Calculator className="w-3 h-3" /> Ver Costos
+                    </button>
+                  </Link>
+                  <a
+                    href={`https://wa.me/50231220803?text=${whatsappAuction}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <button className="w-full py-2 px-3 rounded-lg bg-[#1F2D45] hover:bg-[#243048] text-[#25D366] hover:text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 border border-[#243048]">
+                      <MessageCircle className="w-3 h-3" /> Consultar
+                    </button>
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Skeleton row ─────────────────────────────────────────────────────────────
+
+function SkeletonRow() {
+  return (
+    <div className="bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden">
+      <div className="flex">
+        <div className="w-52 h-40 shimmer flex-shrink-0" />
+        <div className="flex-1 p-4 space-y-3">
+          <div className="h-5 shimmer rounded w-2/3" />
+          <div className="h-3 shimmer rounded w-1/2" />
+          <div className="flex gap-2">
+            <div className="h-5 shimmer rounded-full w-20" />
+            <div className="h-5 shimmer rounded-full w-16" />
+            <div className="h-5 shimmer rounded-full w-18" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="h-3 shimmer rounded w-full" />
+            <div className="h-3 shimmer rounded w-full" />
+          </div>
+        </div>
+        <div className="w-44 p-4 space-y-2 flex-shrink-0">
+          <div className="h-14 shimmer rounded-lg" />
+          <div className="h-8 shimmer rounded-lg" />
+          <div className="h-8 shimmer rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sidebar filter section ───────────────────────────────────────────────────
+
+function FilterSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-[#1F2D45] last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-3 px-4 text-left hover:bg-[#1F2D45]/30 transition-colors"
+      >
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{title}</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-2">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Catalogo() {
@@ -488,7 +566,6 @@ export default function Catalogo() {
     ...(savedFilters || {}),
   });
 
-  // Small initial delay so the catalog query doesn't fire simultaneously with Home/other pages
   const [catalogReady, setCatalogReady] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setCatalogReady(true), 800);
@@ -501,25 +578,21 @@ export default function Catalogo() {
     return () => clearTimeout(t);
   }, [filters.search_query]);
 
-  const [showFilters, setShowFilters] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [makeSearch, setMakeSearch] = useState("");
 
-  // Delay loading of filter data to avoid simultaneous requests on mount
-  // manufacturers loads 3s after filters open, damages loads 5s after
+  // Staggered filter data loading
   const [manufacturersEnabled, setManufacturersEnabled] = useState(false);
   const [damagesEnabled, setDamagesEnabled] = useState(false);
   useEffect(() => {
-    if (!showFilters) return;
-    const t1 = setTimeout(() => setManufacturersEnabled(true), 500);
-    const t2 = setTimeout(() => setDamagesEnabled(true), 2500);
+    const t1 = setTimeout(() => setManufacturersEnabled(true), 1500);
+    const t2 = setTimeout(() => setDamagesEnabled(true), 3500);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [showFilters]);
+  }, []);
 
-  // Dynamic data — staggered to avoid 429
   const { data: manufacturers } = trpc.vehicles.manufacturers.useQuery(undefined, {
     enabled: manufacturersEnabled,
-    staleTime: 60 * 60 * 1000, // 1 hour — manufacturer list rarely changes
+    staleTime: 60 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,
   });
   const { data: models } = trpc.vehicles.models.useQuery(
@@ -528,7 +601,7 @@ export default function Catalogo() {
   );
   const { data: damagesData } = trpc.vehicles.damages.useQuery(undefined, {
     enabled: damagesEnabled,
-    staleTime: 60 * 60 * 1000, // 1 hour — damage types rarely change
+    staleTime: 60 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,
   });
 
@@ -540,30 +613,9 @@ export default function Catalogo() {
 
   const damages: any[] = useMemo(() => (damagesData as any)?.data || [], [damagesData]);
 
-  // Persist filters
   useEffect(() => {
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch {}
   }, [filters]);
-
-  // Persist scroll position
-  useEffect(() => {
-    const handleScroll = () => {
-      try { sessionStorage.setItem(STORAGE_KEY + "_scroll", String(window.scrollY)); } catch {}
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Restore scroll on mount
-  useEffect(() => {
-    try {
-      const savedScroll = sessionStorage.getItem(STORAGE_KEY + "_scroll");
-      if (savedScroll && savedFilters) {
-        setTimeout(() => window.scrollTo({ top: parseInt(savedScroll), behavior: "instant" }), 100);
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const debouncedFilters = useMemo(
     () => ({ ...filters, search_query: debouncedSearch }),
@@ -588,14 +640,13 @@ export default function Catalogo() {
     { lot: debouncedSearch.trim() },
     { enabled: searchType === "lot" && debouncedSearch.trim().length >= 6 }
   );
-  // Auto-refresh every 10 minutes to keep prices current (reduced to avoid 429)
   const generalQuery = trpc.vehicles.search.useQuery(queryInput, {
     enabled: catalogReady && searchType === "general",
-    staleTime: 3 * 60 * 1000,   // 3 minutes fresh
+    staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchInterval: 10 * 60 * 1000, // refresh every 10 min instead of 5
-    refetchOnWindowFocus: false,     // don't refetch when switching tabs
-    retry: false,                    // don't retry on error — server handles retries
+    refetchInterval: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const isLoading = searchType === "vin" ? vinQuery.isLoading : searchType === "lot" ? lotQuery.isLoading : generalQuery.isLoading;
@@ -613,574 +664,552 @@ export default function Catalogo() {
     try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
   }
 
-  const selectClass = "bg-[#141E30] border-[#243048] text-slate-300 focus:border-[#00C8E0]/50 h-9 text-sm";
-  const inputClass = "bg-[#141E30] border-[#243048] text-white placeholder:text-slate-500 focus:border-[#00C8E0]/50 h-9 text-sm";
+  const selectClass = "bg-[#0B1120] border-[#1F2D45] text-slate-300 focus:border-[#00C8E0]/50 h-8 text-xs";
+  const inputClass = "bg-[#0B1120] border-[#1F2D45] text-white placeholder:text-slate-600 focus:border-[#00C8E0]/50 h-8 text-xs";
+
+  // ── Sidebar JSX ──
+  const sidebarContent = (
+    <div className="bg-[#0B1120] border border-[#1F2D45] rounded-xl overflow-hidden">
+      {/* Sidebar header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1F2D45] bg-[#111827]">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4 text-[#00C8E0]" />
+          <span className="text-sm font-bold text-white">Filtros</span>
+          {activeFilterCount > 0 && (
+            <span className="w-5 h-5 rounded-full bg-[#00C8E0] text-[#080D18] text-[10px] font-extrabold flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+        {activeFilterCount > 0 && (
+          <button onClick={clearFilters} className="text-[10px] text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1 font-medium">
+            <RotateCcw className="w-3 h-3" /> Limpiar
+          </button>
+        )}
+      </div>
+
+      {/* Buy Now toggle */}
+      <div className="px-4 py-3 border-b border-[#1F2D45]">
+        <button
+          onClick={() => setFilters(f => ({ ...f, buy_now: f.buy_now === 1 ? undefined : 1, page: 1 }))}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-bold transition-all border ${
+            filters.buy_now === 1
+              ? "bg-[#0d2818] border-[#22c55e]/50 text-[#22c55e]"
+              : "bg-[#111827] border-[#1F2D45] text-slate-400 hover:border-[#22c55e]/30 hover:text-[#22c55e]"
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Solo Comprar Ahora
+          </span>
+          {filters.buy_now === 1
+            ? <CheckSquare className="w-4 h-4" />
+            : <Square className="w-4 h-4 text-slate-600" />
+          }
+        </button>
+      </div>
+
+      {/* Auction type */}
+      <FilterSection title="Tipo de subasta">
+        <div className="grid grid-cols-3 gap-1.5">
+          {[{ id: undefined, label: "Todas" }, ...DOMAINS].map((d) => (
+            <button
+              key={String(d.id)}
+              onClick={() => setFilters(f => ({ ...f, domain_id: d.id, page: 1 }))}
+              className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all border text-center ${
+                filters.domain_id === d.id
+                  ? "bg-[#00C8E0]/15 border-[#00C8E0]/40 text-[#00C8E0]"
+                  : "bg-[#111827] border-[#1F2D45] text-slate-400 hover:text-white hover:border-[#243048]"
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </FilterSection>
+
+      {/* Make */}
+      <FilterSection title="Marca">
+        <div className="space-y-1.5">
+          <input
+            placeholder="Buscar marca..."
+            value={makeSearch}
+            onChange={e => setMakeSearch(e.target.value)}
+            className="w-full px-2.5 py-1.5 text-xs bg-[#111827] border border-[#1F2D45] rounded-lg text-white placeholder:text-slate-600 outline-none focus:border-[#00C8E0]/40"
+          />
+          <Select
+            value={filters.manufacturer_id !== undefined ? String(filters.manufacturer_id) : "all"}
+            onValueChange={(v) => {
+              setFilters(f => ({ ...f, manufacturer_id: v === "all" ? undefined : parseInt(v), model_id: undefined, page: 1 }));
+              setMakeSearch("");
+            }}
+          >
+            <SelectTrigger className={selectClass}><SelectValue placeholder="Seleccionar marca" /></SelectTrigger>
+            <SelectContent className="bg-[#111827] border-[#1F2D45] max-h-60">
+              <SelectItem value="all">Todas las marcas</SelectItem>
+              {allMakes.map((m: any) => (
+                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filters.manufacturer_id && (
+            <Select
+              value={filters.model_id !== undefined ? String(filters.model_id) : "all"}
+              onValueChange={(v) => setFilters(f => ({ ...f, model_id: v === "all" ? undefined : parseInt(v), page: 1 }))}
+            >
+              <SelectTrigger className={selectClass}><SelectValue placeholder="Seleccionar modelo" /></SelectTrigger>
+              <SelectContent className="bg-[#111827] border-[#1F2D45] max-h-60">
+                <SelectItem value="all">Todos los modelos</SelectItem>
+                {((models as any)?.data || [])?.map((m: any) => (
+                  <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </FilterSection>
+
+      {/* Year */}
+      <FilterSection title="Año">
+        <div className="grid grid-cols-2 gap-1.5">
+          <Input type="number" placeholder="Desde" className={inputClass}
+            defaultValue={filters.from_year || ""}
+            onChange={(e) => setFilters(f => ({ ...f, from_year: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+          <Input type="number" placeholder="Hasta" className={inputClass}
+            defaultValue={filters.to_year || ""}
+            onChange={(e) => setFilters(f => ({ ...f, to_year: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+        </div>
+      </FilterSection>
+
+      {/* Price */}
+      <FilterSection title="Precio subasta ($)">
+        <div className="grid grid-cols-2 gap-1.5">
+          <Input type="number" placeholder="Mín." className={inputClass}
+            defaultValue={filters.bid_price_from || ""}
+            onChange={(e) => setFilters(f => ({ ...f, bid_price_from: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+          <Input type="number" placeholder="Máx." className={inputClass}
+            defaultValue={filters.bid_price_to || ""}
+            onChange={(e) => setFilters(f => ({ ...f, bid_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+        </div>
+      </FilterSection>
+
+      {/* Buy Now price */}
+      <FilterSection title="Precio Comprar Ahora ($)" defaultOpen={false}>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Input type="number" placeholder="Mín." className={inputClass}
+            defaultValue={filters.buy_now_price_from || ""}
+            onChange={(e) => setFilters(f => ({ ...f, buy_now_price_from: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+          <Input type="number" placeholder="Máx." className={inputClass}
+            defaultValue={filters.buy_now_price_to || ""}
+            onChange={(e) => setFilters(f => ({ ...f, buy_now_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+        </div>
+      </FilterSection>
+
+      {/* Condition */}
+      <FilterSection title="Condición (Run & Drive)">
+        <Select
+          value={filters.condition !== undefined ? String(filters.condition) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, condition: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier condición" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Cualquier condición</SelectItem>
+            {RUN_CONDITIONS.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Damage */}
+      <FilterSection title="Tipo de daño">
+        <Select
+          value={filters.damage || "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, damage: v === "all" ? undefined : v, page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier daño" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45] max-h-60">
+            <SelectItem value="all">Cualquier daño</SelectItem>
+            {damages.length > 0
+              ? damages.map((d: any) => (
+                  <SelectItem key={d.id} value={String(d.id)}>
+                    {tES(DAMAGE_ES, d.name) || d.name}
+                  </SelectItem>
+                ))
+              : [
+                  { id: "1", name: "Normal Wear" }, { id: "2", name: "Front End" },
+                  { id: "3", name: "Rear End" }, { id: "4", name: "Side" },
+                  { id: "5", name: "Rollover" }, { id: "6", name: "Flood" },
+                  { id: "7", name: "Fire" }, { id: "8", name: "Mechanical" },
+                  { id: "9", name: "Hail" }, { id: "10", name: "Vandalism" },
+                ].map(d => (
+                  <SelectItem key={d.id} value={d.id}>{tES(DAMAGE_ES, d.name) || d.name}</SelectItem>
+                ))
+            }
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Body type */}
+      <FilterSection title="Tipo de vehículo" defaultOpen={false}>
+        <Select
+          value={filters.body_type !== undefined ? String(filters.body_type) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, body_type: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Todos los tipos" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Todos los tipos</SelectItem>
+            {BODY_TYPES.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Fuel */}
+      <FilterSection title="Combustible" defaultOpen={false}>
+        <Select
+          value={filters.fuel_type !== undefined ? String(filters.fuel_type) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, fuel_type: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier combustible" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Cualquier combustible</SelectItem>
+            {FUEL_TYPES.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Transmission */}
+      <FilterSection title="Transmisión" defaultOpen={false}>
+        <Select
+          value={filters.transmission !== undefined ? String(filters.transmission) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, transmission: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier transmisión" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Cualquier transmisión</SelectItem>
+            {TRANSMISSIONS.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Drive wheel */}
+      <FilterSection title="Tracción" defaultOpen={false}>
+        <Select
+          value={filters.drive_wheel !== undefined ? String(filters.drive_wheel) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, drive_wheel: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier tracción" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Cualquier tracción</SelectItem>
+            {DRIVE_WHEELS.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Cylinders */}
+      <FilterSection title="Cilindros" defaultOpen={false}>
+        <div className="grid grid-cols-4 gap-1">
+          {CYLINDERS.map(c => (
+            <button
+              key={c}
+              onClick={() => setFilters(f => ({ ...f, cylinders: f.cylinders === c ? undefined : c, page: 1 }))}
+              className={`py-1.5 rounded-lg text-[10px] font-bold transition-all border text-center ${
+                filters.cylinders === c
+                  ? "bg-[#00C8E0]/15 border-[#00C8E0]/40 text-[#00C8E0]"
+                  : "bg-[#111827] border-[#1F2D45] text-slate-400 hover:text-white hover:border-[#243048]"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </FilterSection>
+
+      {/* State */}
+      <FilterSection title="Estado USA" defaultOpen={false}>
+        <Select
+          value={filters.state_code || "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, state_code: v === "all" ? undefined : v, page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Todos los estados" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45] max-h-60">
+            <SelectItem value="all">Todos los estados</SelectItem>
+            {US_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Odometer */}
+      <FilterSection title="Odómetro (millas)" defaultOpen={false}>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Input type="number" placeholder="Mín." className={inputClass}
+            defaultValue={filters.odometer_from_mi || ""}
+            onChange={(e) => setFilters(f => ({ ...f, odometer_from_mi: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+          <Input type="number" placeholder="Máx." className={inputClass}
+            defaultValue={filters.odometer_to_mi || ""}
+            onChange={(e) => setFilters(f => ({ ...f, odometer_to_mi: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
+        </div>
+      </FilterSection>
+
+      {/* Sale date */}
+      <FilterSection title="Fecha de subasta" defaultOpen={false}>
+        <Select
+          value={filters.sale_date_in_days !== undefined ? String(filters.sale_date_in_days) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, sale_date_in_days: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier fecha" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Cualquier fecha</SelectItem>
+            {SALE_DATE_OPTIONS.map(o => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      {/* Color */}
+      <FilterSection title="Color" defaultOpen={false}>
+        <Select
+          value={filters.color !== undefined ? String(filters.color) : "all"}
+          onValueChange={(v) => setFilters(f => ({ ...f, color: v === "all" ? undefined : parseInt(v), page: 1 }))}
+        >
+          <SelectTrigger className={selectClass}><SelectValue placeholder="Cualquier color" /></SelectTrigger>
+          <SelectContent className="bg-[#111827] border-[#1F2D45]">
+            <SelectItem value="all">Cualquier color</SelectItem>
+            {[
+              { id: 1, label: "Blanco" }, { id: 2, label: "Negro" },
+              { id: 3, label: "Gris" }, { id: 4, label: "Plata" },
+              { id: 5, label: "Rojo" }, { id: 6, label: "Azul" },
+              { id: 7, label: "Verde" }, { id: 8, label: "Café / Beige" },
+              { id: 9, label: "Amarillo / Dorado" }, { id: 10, label: "Naranja" },
+              { id: 11, label: "Morado" }, { id: 12, label: "Otro" },
+            ].map(c => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#080D18] pt-20">
-      {/* Header */}
-      <div className="bg-[#0F1624] border-b border-[#243048]/40 py-8">
-        <div className="container">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="font-display text-4xl md:text-5xl text-white">
-                CATÁLOGO DE <span className="text-[#00C8E0]">VEHÍCULOS</span>
-              </h1>
-              <p className="text-slate-400 mt-1 text-sm font-medium">
-                Copart e IAAI en tiempo real —{" "}
-                {total > 0 ? (
-                  <span className="text-white font-semibold">{total.toLocaleString()} vehículos disponibles</span>
-                ) : "Cargando..."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Comprar Ahora toggle */}
+      {/* ── Page header ── */}
+      <div className="bg-[#0B1120] border-b border-[#1F2D45]/60">
+        <div className="container py-5">
+          <div className="flex flex-col gap-3">
+            {/* Title + count */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h1 className="font-display text-3xl md:text-4xl text-white tracking-tight">
+                  CATÁLOGO DE <span className="text-[#00C8E0]">VEHÍCULOS</span>
+                </h1>
+                <p className="text-slate-500 text-xs mt-0.5 font-medium">
+                  Copart e IAAI en tiempo real ·{" "}
+                  {total > 0 ? (
+                    <span className="text-[#00C8E0] font-semibold">{total.toLocaleString()} disponibles</span>
+                  ) : isLoading ? "Cargando..." : ""}
+                </p>
+              </div>
+              {/* Mobile filter button */}
               <button
-                onClick={() => setFilters(f => ({ ...f, buy_now: f.buy_now === 1 ? undefined : 1, page: 1 }))}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
-                  filters.buy_now === 1
-                    ? "bg-[#22c55e] border-[#22c55e] text-white shadow-lg shadow-[#22c55e]/20"
-                    : "bg-[#141E30] border-[#243048] text-slate-300 hover:border-[#22c55e]/50 hover:text-[#22c55e]"
-                }`}
+                onClick={() => setShowMobileFilters(true)}
+                className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-lg bg-[#111827] border border-[#1F2D45] text-slate-300 text-sm font-semibold hover:border-[#00C8E0]/30 transition-colors"
               >
-                <Zap className="w-4 h-4" />
-                Comprar Ahora
-              </button>
-              <Button
-                onClick={() => setShowFilters(!showFilters)}
-                variant="outline"
-                className={`border-[#243048] text-slate-300 hover:text-white relative ${showFilters ? "bg-[#141E30]" : ""}`}
-              >
-                <SlidersHorizontal className="w-4 h-4 mr-2" />
+                <SlidersHorizontal className="w-4 h-4" />
                 Filtros
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#00C8E0] text-[#080D18] text-xs font-bold flex items-center justify-center">
+                  <span className="w-5 h-5 rounded-full bg-[#00C8E0] text-[#080D18] text-[10px] font-extrabold flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
-                {showFilters ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
-              </Button>
-            </div>
-          </div>
-
-          {/* Search bar */}
-          <div className="mt-4 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <Input
-              placeholder="Buscar por marca, modelo, VIN o número de lote..."
-              value={filters.search_query}
-              onChange={(e) => setFilters(f => ({ ...f, search_query: e.target.value, page: 1 }))}
-              className="pl-12 bg-[#141E30] border-[#243048] text-white placeholder:text-slate-500 focus:border-[#00C8E0]/50 h-12 text-sm font-medium"
-            />
-          </div>
-
-          {/* Search type indicator */}
-          {filters.search_query && searchType !== "general" && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className={`px-2 py-1 rounded text-xs font-bold ${searchType === "vin" ? "bg-[#00C8E0]/20 text-[#00C8E0]" : "bg-[#F97316]/20 text-[#F97316]"}`}>
-                {searchType === "vin" ? "Búsqueda por VIN" : "Búsqueda por Lote"}
-              </span>
-              <span className="text-slate-500 text-xs">Búsqueda directa activada</span>
-            </div>
-          )}
-
-          {/* Sort bar */}
-          <div className="mt-4 flex flex-wrap gap-2 items-center">
-            <span className="text-slate-500 text-xs font-medium hidden sm:inline">Ordenar:</span>
-            {[
-              { sort: "buy_now_price", order: "asc" as const, label: "Comprar Ahora ↑", color: "green" },
-              { sort: "buy_now_price", order: "desc" as const, label: "Comprar Ahora ↓", color: "green" },
-              { sort: "bid", order: "asc" as const, label: "Subasta ↑", color: "cyan" },
-              { sort: "bid", order: "desc" as const, label: "Subasta ↓", color: "cyan" },
-            ].map(opt => {
-              const active = filters.sort === opt.sort && filters.order === opt.order;
-              const isGreen = opt.color === "green";
-              return (
-                <button
-                  key={`${opt.sort}-${opt.order}`}
-                  onClick={() => setFilters(f => ({
-                    ...f,
-                    sort: opt.sort,
-                    order: opt.order,
-                    buy_now: opt.sort === "buy_now_price" ? 1 : f.buy_now,
-                    page: 1,
-                  }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                    active
-                      ? isGreen
-                        ? "bg-[#22c55e] border-[#22c55e] text-white"
-                        : "bg-[#00C8E0] border-[#00C8E0] text-[#080D18]"
-                      : "bg-[#141E30] border-[#243048] text-slate-400 hover:text-white hover:border-[#243048]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-            {(filters.sort || filters.buy_now) && (
-              <button
-                onClick={() => setFilters(f => ({ ...f, sort: undefined, order: undefined, buy_now: undefined, page: 1 }))}
-                className="px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-300 border border-transparent hover:border-[#243048] transition-all flex items-center gap-1"
-              >
-                <RotateCcw className="w-3 h-3" /> Quitar orden
               </button>
-            )}
-          </div>
+            </div>
 
-          {/* Filter panel */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-4 p-5 bg-[#0a1220] border border-[#243048]/60 rounded-2xl space-y-4">
-                  {/* Basic filters row 1 */}
-                  <div>
-                    <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2.5">Búsqueda básica</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                      {/* Platform */}
-                      <Select
-                        value={filters.domain_id !== undefined ? String(filters.domain_id) : "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, domain_id: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Plataforma" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048]">
-                          <SelectItem value="all">Todas las plataformas</SelectItem>
-                          {DOMAINS.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+            {/* Search bar */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                placeholder="Buscar por marca, modelo, VIN o número de lote..."
+                value={filters.search_query}
+                onChange={(e) => setFilters(f => ({ ...f, search_query: e.target.value, page: 1 }))}
+                className="w-full pl-10 pr-4 py-2.5 bg-[#111827] border border-[#1F2D45] rounded-xl text-white placeholder:text-slate-600 text-sm font-medium outline-none focus:border-[#00C8E0]/40 transition-colors"
+              />
+              {filters.search_query && (
+                <button
+                  onClick={() => setFilters(f => ({ ...f, search_query: "", page: 1 }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-                      {/* Make */}
-                      <Select
-                        value={filters.manufacturer_id !== undefined ? String(filters.manufacturer_id) : "all"}
-                        onValueChange={(v) => {
-                          setFilters(f => ({ ...f, manufacturer_id: v === "all" ? undefined : parseInt(v), model_id: undefined, page: 1 }));
-                          setMakeSearch("");
-                        }}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Marca" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048] max-h-72">
-                          <div className="px-2 py-1.5 sticky top-0 bg-[#141E30] border-b border-[#243048] z-10">
-                            <input
-                              placeholder="Buscar marca..."
-                              value={makeSearch}
-                              onChange={e => setMakeSearch(e.target.value)}
-                              onClick={e => e.stopPropagation()}
-                              className="w-full px-2 py-1 text-xs bg-[#0F1624] border border-[#243048] rounded text-white placeholder:text-slate-500 outline-none"
-                            />
-                          </div>
-                          <SelectItem value="all">Todas las marcas</SelectItem>
-                          {allMakes.map((m: any) => (
-                            <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Model */}
-                      {filters.manufacturer_id && (
-                        <Select
-                          value={filters.model_id !== undefined ? String(filters.model_id) : "all"}
-                          onValueChange={(v) => setFilters(f => ({ ...f, model_id: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                        >
-                          <SelectTrigger className={selectClass}><SelectValue placeholder="Modelo" /></SelectTrigger>
-                          <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
-                            <SelectItem value="all">Todos los modelos</SelectItem>
-                            {((models as any)?.data || [])?.map((m: any) => (
-                              <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {/* Body type */}
-                      <Select
-                        value={filters.body_type !== undefined ? String(filters.body_type) : "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, body_type: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Tipo de vehículo" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048]">
-                          <SelectItem value="all">Todos los tipos</SelectItem>
-                          {BODY_TYPES.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Year from */}
-                      <Input type="number" placeholder="Año desde" className={inputClass}
-                        defaultValue={filters.from_year || ""}
-                        onChange={(e) => setFilters(f => ({ ...f, from_year: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-
-                      {/* Year to */}
-                      <Input type="number" placeholder="Año hasta" className={inputClass}
-                        defaultValue={filters.to_year || ""}
-                        onChange={(e) => setFilters(f => ({ ...f, to_year: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-
-                      {/* Price from */}
-                      <Input type="number" placeholder="Precio mín. $" className={inputClass}
-                        defaultValue={filters.bid_price_from || ""}
-                        onChange={(e) => setFilters(f => ({ ...f, bid_price_from: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-
-                      {/* Price to */}
-                      <Input type="number" placeholder="Precio máx. $" className={inputClass}
-                        defaultValue={filters.bid_price_to || ""}
-                        onChange={(e) => setFilters(f => ({ ...f, bid_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-
-                      {/* State */}
-                      <Select
-                        value={filters.state_code || "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, state_code: v === "all" ? undefined : v, page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Estado USA" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
-                          <SelectItem value="all">Todos los estados</SelectItem>
-                          {US_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Sale date */}
-                      <Select
-                        value={filters.sale_date_in_days !== undefined ? String(filters.sale_date_in_days) : "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, sale_date_in_days: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Fecha de subasta" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048]">
-                          <SelectItem value="all">Cualquier fecha</SelectItem>
-                          {SALE_DATE_OPTIONS.map(o => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Condition (Run & Drive) — visible in basic */}
-                      <Select
-                        value={filters.condition !== undefined ? String(filters.condition) : "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, condition: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Condición" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048]">
-                          <SelectItem value="all">Cualquier condición</SelectItem>
-                          {RUN_CONDITIONS.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Fuel — visible in basic */}
-                      <Select
-                        value={filters.fuel_type !== undefined ? String(filters.fuel_type) : "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, fuel_type: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Combustible" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048]">
-                          <SelectItem value="all">Cualquier combustible</SelectItem>
-                          {FUEL_TYPES.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Transmission — visible in basic */}
-                      <Select
-                        value={filters.transmission !== undefined ? String(filters.transmission) : "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, transmission: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Transmisión" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048]">
-                          <SelectItem value="all">Cualquier transmisión</SelectItem>
-                          {TRANSMISSIONS.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Damage — visible in basic */}
-                      <Select
-                        value={filters.damage || "all"}
-                        onValueChange={(v) => setFilters(f => ({ ...f, damage: v === "all" ? undefined : v, page: 1 }))}
-                      >
-                        <SelectTrigger className={selectClass}><SelectValue placeholder="Tipo de daño" /></SelectTrigger>
-                        <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
-                          <SelectItem value="all">Cualquier daño</SelectItem>
-                          {damages.length > 0
-                            ? damages.map((d: any) => (
-                                <SelectItem key={d.id} value={String(d.id)}>
-                                  {tES(DAMAGE_ES, d.name) || d.name}
-                                </SelectItem>
-                              ))
-                            : [
-                                { id: "1", name: "Normal Wear" }, { id: "2", name: "Front End" },
-                                { id: "3", name: "Rear End" }, { id: "4", name: "Side" },
-                                { id: "5", name: "Rollover" }, { id: "6", name: "Flood" },
-                                { id: "7", name: "Fire" }, { id: "8", name: "Mechanical" },
-                                { id: "9", name: "Hail" }, { id: "10", name: "Vandalism" },
-                              ].map(d => (
-                                <SelectItem key={d.id} value={d.id}>{tES(DAMAGE_ES, d.name) || d.name}</SelectItem>
-                              ))
-                          }
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Advanced filters toggle */}
+            {/* Sort + active chips row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-slate-600 text-[10px] font-semibold uppercase tracking-wider">Ordenar:</span>
+              {[
+                { sort: "buy_now_price", order: "asc" as const, label: "Comprar Ahora ↑" },
+                { sort: "buy_now_price", order: "desc" as const, label: "Comprar Ahora ↓" },
+                { sort: "bid", order: "asc" as const, label: "Subasta ↑" },
+                { sort: "bid", order: "desc" as const, label: "Subasta ↓" },
+              ].map(opt => {
+                const active = filters.sort === opt.sort && filters.order === opt.order;
+                const isGreen = opt.sort === "buy_now_price";
+                return (
                   <button
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#00C8E0] transition-colors font-medium"
+                    key={`${opt.sort}-${opt.order}`}
+                    onClick={() => setFilters(f => ({
+                      ...f, sort: opt.sort, order: opt.order,
+                      buy_now: opt.sort === "buy_now_price" ? 1 : f.buy_now,
+                      page: 1,
+                    }))}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                      active
+                        ? isGreen
+                          ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#22c55e]"
+                          : "bg-[#00C8E0]/15 border-[#00C8E0]/40 text-[#00C8E0]"
+                        : "bg-[#111827] border-[#1F2D45] text-slate-500 hover:text-white hover:border-[#243048]"
+                    }`}
                   >
-                    {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    {showAdvanced ? "Ocultar filtros avanzados" : "Más filtros (daño, transmisión, tracción, cilindros...)"}
+                    {opt.label}
                   </button>
+                );
+              })}
+              {(filters.sort || filters.buy_now) && (
+                <button
+                  onClick={() => setFilters(f => ({ ...f, sort: undefined, order: undefined, buy_now: undefined, page: 1 }))}
+                  className="px-2.5 py-1 rounded-lg text-[10px] text-slate-600 hover:text-slate-300 border border-transparent hover:border-[#1F2D45] transition-all flex items-center gap-1 font-medium"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" /> Quitar
+                </button>
+              )}
 
-                  {/* Advanced filters */}
-                  <AnimatePresence>
-                    {showAdvanced && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div>
-                          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2.5">Filtros avanzados</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                            {/* Damage */}
-                            <Select
-                              value={filters.damage || "all"}
-                              onValueChange={(v) => setFilters(f => ({ ...f, damage: v === "all" ? undefined : v, page: 1 }))}
-                            >
-                              <SelectTrigger className={selectClass}><SelectValue placeholder="Tipo de daño" /></SelectTrigger>
-                              <SelectContent className="bg-[#141E30] border-[#243048] max-h-60">
-                                <SelectItem value="all">Cualquier daño</SelectItem>
-                                {damages.length > 0
-                                  ? damages.map((d: any) => (
-                                      <SelectItem key={d.id} value={String(d.id)}>
-                                        {tES(DAMAGE_ES, d.name) || d.name}
-                                      </SelectItem>
-                                    ))
-                                  : [
-                                      { id: "1", name: "Normal Wear" }, { id: "2", name: "Front End" },
-                                      { id: "3", name: "Rear End" }, { id: "4", name: "Side" },
-                                      { id: "5", name: "Rollover" }, { id: "6", name: "Flood" },
-                                      { id: "7", name: "Fire" }, { id: "8", name: "Mechanical" },
-                                      { id: "9", name: "Hail" }, { id: "10", name: "Vandalism" },
-                                    ].map(d => (
-                                      <SelectItem key={d.id} value={d.id}>{tES(DAMAGE_ES, d.name) || d.name}</SelectItem>
-                                    ))
-                                }
-                              </SelectContent>
-                            </Select>
-
-                            {/* Transmission */}
-                            <Select
-                              value={filters.transmission !== undefined ? String(filters.transmission) : "all"}
-                              onValueChange={(v) => setFilters(f => ({ ...f, transmission: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                            >
-                              <SelectTrigger className={selectClass}><SelectValue placeholder="Transmisión" /></SelectTrigger>
-                              <SelectContent className="bg-[#141E30] border-[#243048]">
-                                <SelectItem value="all">Cualquier transmisión</SelectItem>
-                                {TRANSMISSIONS.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Drive wheel */}
-                            <Select
-                              value={filters.drive_wheel !== undefined ? String(filters.drive_wheel) : "all"}
-                              onValueChange={(v) => setFilters(f => ({ ...f, drive_wheel: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                            >
-                              <SelectTrigger className={selectClass}><SelectValue placeholder="Tracción" /></SelectTrigger>
-                              <SelectContent className="bg-[#141E30] border-[#243048]">
-                                <SelectItem value="all">Cualquier tracción</SelectItem>
-                                {DRIVE_WHEELS.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Cylinders */}
-                            <Select
-                              value={filters.cylinders !== undefined ? String(filters.cylinders) : "all"}
-                              onValueChange={(v) => setFilters(f => ({ ...f, cylinders: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                            >
-                              <SelectTrigger className={selectClass}><SelectValue placeholder="Cilindros" /></SelectTrigger>
-                              <SelectContent className="bg-[#141E30] border-[#243048]">
-                                <SelectItem value="all">Cualquier cilindrada</SelectItem>
-                                {CYLINDERS.map(c => <SelectItem key={c} value={String(c)}>{c} cilindros</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Title condition */}
-                            <Select
-                              value={filters.condition !== undefined ? String(filters.condition) : "all"}
-                              onValueChange={(v) => setFilters(f => ({ ...f, condition: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                            >
-                              <SelectTrigger className={selectClass}><SelectValue placeholder="Tipo de título" /></SelectTrigger>
-                              <SelectContent className="bg-[#141E30] border-[#243048]">
-                                <SelectItem value="all">Cualquier título</SelectItem>
-                                {TITLE_CONDITIONS.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Odometer from */}
-                            <Input type="number" placeholder="Odómetro mín. (mi)" className={inputClass}
-                              defaultValue={filters.odometer_from_mi || ""}
-                              onChange={(e) => setFilters(f => ({ ...f, odometer_from_mi: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-
-                            {/* Odometer to */}
-                            <Input type="number" placeholder="Odómetro máx. (mi)" className={inputClass}
-                              defaultValue={filters.odometer_to_mi || ""}
-                              onChange={(e) => setFilters(f => ({ ...f, odometer_to_mi: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-
-                            {/* Color */}
-                            <Select
-                              value={filters.color !== undefined ? String(filters.color) : "all"}
-                              onValueChange={(v) => setFilters(f => ({ ...f, color: v === "all" ? undefined : parseInt(v), page: 1 }))}
-                            >
-                              <SelectTrigger className={selectClass}><SelectValue placeholder="Color" /></SelectTrigger>
-                              <SelectContent className="bg-[#141E30] border-[#243048]">
-                                <SelectItem value="all">Cualquier color</SelectItem>
-                                {[
-                                  { id: 1, label: "Blanco" }, { id: 2, label: "Negro" },
-                                  { id: 3, label: "Gris" }, { id: 4, label: "Plata" },
-                                  { id: 5, label: "Rojo" }, { id: 6, label: "Azul" },
-                                  { id: 7, label: "Verde" }, { id: 8, label: "Café / Beige" },
-                                  { id: 9, label: "Amarillo / Dorado" }, { id: 10, label: "Naranja" },
-                                  { id: 11, label: "Morado" }, { id: 12, label: "Otro" },
-                                ].map(c => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-
-                            {/* Buy Now price range */}
-                            <Input type="number" placeholder="Comprar Ahora mín. $" className={inputClass}
-                              defaultValue={filters.buy_now_price_from || ""}
-                              onChange={(e) => setFilters(f => ({ ...f, buy_now_price_from: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-                            <Input type="number" placeholder="Comprar Ahora máx. $" className={inputClass}
-                              defaultValue={filters.buy_now_price_to || ""}
-                              onChange={(e) => setFilters(f => ({ ...f, buy_now_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))} />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Clear filters */}
-                  {activeFilterCount > 0 && (
-                    <div className="flex justify-end pt-1">
-                      <button
-                        onClick={clearFilters}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white border border-[#243048] hover:border-red-500/50 transition-all font-medium"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        Limpiar {activeFilterCount} filtro{activeFilterCount !== 1 ? "s" : ""}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              {/* Search type indicator */}
+              {filters.search_query && searchType !== "general" && (
+                <span className={`px-2 py-1 rounded text-[10px] font-bold ml-2 ${
+                  searchType === "vin" ? "bg-[#00C8E0]/15 text-[#00C8E0]" : "bg-[#F97316]/15 text-[#F97316]"
+                }`}>
+                  {searchType === "vin" ? "VIN" : "Lote"}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Active filter chips */}
-      {activeFilterCount > 0 && !showFilters && (
-        <div className="bg-[#0F1624] border-b border-[#243048]/40 py-2">
-          <div className="container flex items-center gap-2 flex-wrap">
-            <span className="text-slate-500 text-xs font-medium">Filtros activos:</span>
-            {filters.buy_now === 1 && (
-              <span className="px-2 py-0.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 text-[#22c55e] text-xs flex items-center gap-1 font-medium">
-                <Zap className="w-2.5 h-2.5" /> Comprar Ahora
-                <button onClick={() => setFilters(f => ({ ...f, buy_now: undefined, page: 1 }))} className="ml-1 hover:text-white"><X className="w-2.5 h-2.5" /></button>
-              </span>
-            )}
-            {filters.domain_id && (
-              <span className="px-2 py-0.5 rounded-full bg-[#00C8E0]/10 border border-[#00C8E0]/30 text-[#00C8E0] text-xs flex items-center gap-1 font-medium">
-                {DOMAINS.find(d => d.id === filters.domain_id)?.label}
-                <button onClick={() => setFilters(f => ({ ...f, domain_id: undefined, page: 1 }))} className="ml-1 hover:text-white"><X className="w-2.5 h-2.5" /></button>
-              </span>
-            )}
-            {filters.sale_date_in_days && (
-              <span className="px-2 py-0.5 rounded-full bg-[#F97316]/10 border border-[#F97316]/30 text-[#F97316] text-xs flex items-center gap-1 font-medium">
-                <Calendar className="w-2.5 h-2.5" />
-                {SALE_DATE_OPTIONS.find(o => o.value === filters.sale_date_in_days)?.label}
-                <button onClick={() => setFilters(f => ({ ...f, sale_date_in_days: undefined, page: 1 }))} className="ml-1 hover:text-white"><X className="w-2.5 h-2.5" /></button>
-              </span>
-            )}
-            <button
-              onClick={clearFilters}
-              className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs hover:text-white transition-colors font-medium"
-            >
-              Limpiar todo
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ── Main layout: sidebar + results ── */}
+      <div className="container py-6">
+        <div className="flex gap-6 items-start">
 
-      {/* Grid */}
-      <div className="container py-8">
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="bg-[#141E30] border border-[#243048] rounded-2xl overflow-hidden">
-                <div className="aspect-video shimmer" />
-                <div className="p-4 space-y-3">
-                  <div className="h-5 shimmer rounded" />
-                  <div className="h-4 shimmer rounded w-2/3" />
-                  <div className="h-10 shimmer rounded" />
+          {/* ── Desktop sidebar ── */}
+          <aside className="hidden lg:block w-64 xl:w-72 flex-shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-[#1F2D45] scrollbar-track-transparent">
+            {sidebarContent}
+          </aside>
+
+          {/* ── Results column ── */}
+          <div className="flex-1 min-w-0 space-y-3">
+            {/* Results header */}
+            {!isLoading && vehicles.length > 0 && (
+              <div className="flex items-center justify-between text-xs text-slate-500 font-medium pb-1">
+                <span>
+                  Mostrando <span className="text-white font-semibold">{((filters.page - 1) * filters.per_page) + 1}–{Math.min(filters.page * filters.per_page, total)}</span> de{" "}
+                  <span className="text-white font-semibold">{total.toLocaleString()}</span> vehículos
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <ArrowUpDown className="w-3 h-3" />
+                  <span>Página {filters.page} / {totalPages.toLocaleString()}</span>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="text-center py-20">
-            <Car className="w-16 h-16 text-[#243048] mx-auto mb-4" />
-            <p className="text-slate-400 text-lg font-medium">Error al cargar vehículos. Intenta de nuevo.</p>
-            <p className="text-slate-500 text-sm mt-2">{error.message}</p>
-          </div>
-        ) : vehicles.length === 0 ? (
-          <div className="text-center py-20">
-            <Car className="w-16 h-16 text-[#243048] mx-auto mb-4" />
-            <p className="text-slate-400 text-lg font-medium">No se encontraron vehículos con esos filtros.</p>
-            <button onClick={clearFilters} className="mt-4 text-[#00C8E0] text-sm hover:underline flex items-center gap-1 mx-auto font-medium">
-              <RotateCcw className="w-3.5 h-3.5" /> Limpiar filtros
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {vehicles.map((vehicle: any, i: number) => (
-              <VehicleCard key={vehicle.id || vehicle.lot_number || i} vehicle={vehicle} />
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* Pagination */}
-        {!isLoading && vehicles.length > 0 && (
-          <div className="flex flex-col items-center gap-3 mt-10">
-            <p className="text-slate-500 text-sm font-medium">
-              Mostrando {((filters.page - 1) * filters.per_page) + 1}–{Math.min(filters.page * filters.per_page, total)} de{" "}
-              <span className="text-white font-semibold">{total.toLocaleString()}</span> vehículos
-            </p>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-[#243048] text-slate-300 hover:text-white font-medium"
-                disabled={filters.page <= 1}
-                onClick={() => {
-                  setFilters(f => ({ ...f, page: f.page - 1 }));
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                ← Anterior
-              </Button>
-              <span className="text-slate-300 text-sm font-semibold px-4 py-2 bg-[#141E30] border border-[#243048] rounded-lg min-w-[140px] text-center">
-                Página {filters.page} de {totalPages.toLocaleString()}
-              </span>
-              <Button
-                variant="outline"
-                className="border-[#243048] text-slate-300 hover:text-white font-medium"
-                disabled={filters.page >= totalPages}
-                onClick={() => {
-                  setFilters(f => ({ ...f, page: f.page + 1 }));
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                Siguiente →
-              </Button>
-            </div>
+            {/* Vehicle list */}
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}
+              </div>
+            ) : error ? (
+              <div className="bg-[#111827] border border-[#1F2D45] rounded-xl p-12 text-center">
+                <Car className="w-14 h-14 text-[#1F2D45] mx-auto mb-4" />
+                <p className="text-slate-300 text-base font-semibold mb-1">No se pudieron cargar los vehículos</p>
+                <p className="text-slate-600 text-sm max-w-sm mx-auto">
+                  La API de subastas está procesando tu solicitud. Los datos se actualizarán automáticamente en unos momentos.
+                </p>
+                <button
+                  onClick={() => generalQuery.refetch()}
+                  className="mt-4 px-4 py-2 rounded-lg bg-[#00C8E0]/15 border border-[#00C8E0]/30 text-[#00C8E0] text-sm font-semibold hover:bg-[#00C8E0]/25 transition-colors flex items-center gap-2 mx-auto"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Reintentar
+                </button>
+              </div>
+            ) : vehicles.length === 0 ? (
+              <div className="bg-[#111827] border border-[#1F2D45] rounded-xl p-12 text-center">
+                <Car className="w-14 h-14 text-[#1F2D45] mx-auto mb-4" />
+                <p className="text-slate-300 text-base font-semibold mb-1">Sin resultados</p>
+                <p className="text-slate-600 text-sm">No se encontraron vehículos con esos filtros.</p>
+                <button onClick={clearFilters} className="mt-4 text-[#00C8E0] text-sm hover:underline flex items-center gap-1 mx-auto font-medium">
+                  <RotateCcw className="w-3.5 h-3.5" /> Limpiar filtros
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {vehicles.map((vehicle: any, i: number) => (
+                  <VehicleRow key={vehicle.id || vehicle.lot_number || i} vehicle={vehicle} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!isLoading && vehicles.length > 0 && (
+              <div className="flex items-center justify-center gap-3 pt-4">
+                <button
+                  disabled={filters.page <= 1}
+                  onClick={() => { setFilters(f => ({ ...f, page: f.page - 1 })); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#111827] border border-[#1F2D45] text-slate-300 text-sm font-semibold hover:border-[#00C8E0]/30 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Anterior
+                </button>
+                <span className="text-slate-400 text-sm font-semibold px-4 py-2 bg-[#111827] border border-[#1F2D45] rounded-lg min-w-[130px] text-center">
+                  {filters.page} / {totalPages.toLocaleString()}
+                </span>
+                <button
+                  disabled={filters.page >= totalPages}
+                  onClick={() => { setFilters(f => ({ ...f, page: f.page + 1 })); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#111827] border border-[#1F2D45] text-slate-300 text-sm font-semibold hover:border-[#00C8E0]/30 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Siguiente <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── Mobile filter drawer ── */}
+      <AnimatePresence>
+        {showMobileFilters && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
+              onClick={() => setShowMobileFilters(false)}
+            />
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-80 bg-[#080D18] z-50 lg:hidden overflow-y-auto"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-[#1F2D45]">
+                <span className="text-white font-bold text-base">Filtros</span>
+                <button onClick={() => setShowMobileFilters(false)} className="text-slate-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4">
+                {sidebarContent}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
