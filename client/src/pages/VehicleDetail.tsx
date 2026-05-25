@@ -70,6 +70,7 @@ function normalizeVehicleDetail(v: AuctionVehicle) {
     else if (lot.images?.small?.length) allImages.push(...lot.images.small);
   }
   const stateCode = primaryLot?.location?.state?.code ?? "FL";
+  const city = primaryLot?.location?.city ?? null;
   const bidPrice = primaryLot?.bid ?? primaryLot?.final_bid ?? 0;
   // Real API field is lot.buy_now (number), buy_now_price is an alias
   const buyNowPrice: number | null = (() => {
@@ -91,7 +92,7 @@ function normalizeVehicleDetail(v: AuctionVehicle) {
   const transmission = (v as any).transmission?.name ?? (v as any).transmission ?? null;
   const saleDate = primaryLot?.sale_date ?? null;
   return {
-    ...v, platform, platformLabel, platformColor, allImages, stateCode,
+    ...v, platform, platformLabel, platformColor, allImages, stateCode, city,
     bidPrice, buyNowPrice, odometer, fuelType, bodyType, make, model,
     damageType, lotNumber, condition, highlights, transmission, saleDate,
   };
@@ -121,16 +122,16 @@ function BreakdownRow({ icon: Icon, label, usd, gtq, highlight = false, accent =
 // ─── Single calculator panel ──────────────────────────────────────────────────
 
 function CalcPanel({
-  title, subtitle, price, platform, stateCode, bodyType,
+  title, subtitle, price, platform, stateCode, bodyType, city,
   accentColor, icon: Icon, isBuyNow, whatsappMsg, buyNowWhatsappMsg,
 }: {
   title: string; subtitle: string; price: number;
-  platform: "copart" | "iaai"; stateCode: string; bodyType: string | null;
+  platform: "copart" | "iaai"; stateCode: string; bodyType: string | null; city?: string | null;
   accentColor: string; icon: any; isBuyNow: boolean;
   whatsappMsg: string; buyNowWhatsappMsg?: string;
 }) {
   const { data: calcResult, isLoading, refetch } = trpc.calculator.calculate.useQuery(
-    { auctionPrice: price, platform, stateCode, bodyType: bodyType ?? null },
+    { auctionPrice: price, platform, stateCode, bodyType: bodyType ?? null, city: city ?? null },
     { enabled: price > 0, staleTime: 5 * 60 * 1000 }
   );
 
@@ -222,9 +223,9 @@ function CalcPanel({
 // ─── Interactive auction calculator ──────────────────────────────────────────
 
 function AuctionCalcInteractive({
-  platform, stateCode, bodyType, currentBid, whatsappBase,
+  platform, stateCode, bodyType, city, currentBid, whatsappBase,
 }: {
-  platform: "copart" | "iaai"; stateCode: string; bodyType: string | null;
+  platform: "copart" | "iaai"; stateCode: string; bodyType: string | null; city?: string | null;
   currentBid: number; whatsappBase: string;
 }) {
   const [bidInput, setBidInput] = useState<string>(currentBid > 0 ? String(currentBid) : "");
@@ -239,7 +240,7 @@ function AuctionCalcInteractive({
   }, [bidInput]);
 
   const { data: calcResult, isLoading, refetch } = trpc.calculator.calculate.useQuery(
-    { auctionPrice: debouncedBid, platform, stateCode, bodyType: bodyType ?? null },
+    { auctionPrice: debouncedBid, platform, stateCode, bodyType: bodyType ?? null, city: city ?? null },
     { enabled: debouncedBid > 0, staleTime: 5 * 60 * 1000 }
   );
 
@@ -385,7 +386,7 @@ export default function VehicleDetail() {
   }
 
   const {
-    platform, platformLabel, platformColor, allImages, stateCode,
+    platform, platformLabel, platformColor, allImages, stateCode, city,
     bidPrice, buyNowPrice, odometer, fuelType, bodyType, make, model,
     damageType, lotNumber, condition, highlights, transmission, saleDate,
   } = vehicle;
@@ -586,6 +587,7 @@ export default function VehicleDetail() {
                 platform={platform as "copart" | "iaai"}
                 stateCode={stateCode}
                 bodyType={bodyType}
+                city={city}
                 accentColor="#22c55e"
                 icon={Zap}
                 isBuyNow={true}
@@ -600,6 +602,7 @@ export default function VehicleDetail() {
                 platform={platform as "copart" | "iaai"}
                 stateCode={stateCode}
                 bodyType={bodyType}
+                city={city}
                 currentBid={bidPrice}
                 whatsappBase={baseWhatsapp}
               />
@@ -622,6 +625,7 @@ export default function VehicleDetail() {
                     platform={platform as "copart" | "iaai"}
                     stateCode={stateCode}
                     bodyType={bodyType}
+                    city={city}
                     accentColor="#22c55e"
                     icon={Zap}
                     isBuyNow={true}
@@ -642,6 +646,7 @@ export default function VehicleDetail() {
                   platform={platform as "copart" | "iaai"}
                   stateCode={stateCode}
                   bodyType={bodyType}
+                  city={city}
                   currentBid={bidPrice}
                   whatsappBase={baseWhatsapp}
                 />

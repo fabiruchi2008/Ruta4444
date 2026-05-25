@@ -113,3 +113,14 @@
 - [x] Filtros del catálogo: agregar Run & Drive (condición), Daño primario, Combustible, Transmisión visibles en panel básico
 - [x] Cambiar "Buy Now" a "Comprar Ahora" en toda la UI
 - [x] Actualización automática del catálogo (refetch cada 5 minutos para precios actualizados)
+
+## Mejoras v6 - Royal Shipping Scraping + Calculadora Precisa
+
+- [ ] Scraping profundo de Royal Shipping: precios reales por estado USA, tipo de subasta (Copart/IAAI), tamaño de vehículo (sedan/SUV/pickup/van)
+- [ ] Crear tabla shipping_rates en DB con columnas: state_code, auction_type, vehicle_size, price_usd, port, notes
+- [ ] Poblar tabla con todos los precios reales de Royal Shipping
+- [ ] Actualizar calculadora VehicleDetail: detección automática de estado + tamaño por tipo de carrocería
+- [ ] Ganancia de Ruta Cars GT incluida en línea "Transporte USA" (oculta, no visible al cliente)
+- [ ] Endpoint tRPC para consultar shipping_rates por estado + tamaño
+- [ ] Mostrar desglose real: Transporte USA (incluye ganancia), Shipping Marítimo (precio real Royal), fees de subasta reales
+- [ ] Implementar logo nuevo de Ruta Cars GT (archivo 5AA788FE-D5E3-4401-98C9-E846B4B3502B.png) en navbar y favicon

@@ -119,3 +119,32 @@ export const contacts = mysqlTable("contacts", {
 
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
+
+// ─── Tarifas de Transporte (Royal Shipping) ─────────────────────────────────────────────────────────────────────────────────
+// Precios reales scrapeados de royalshippinglines.com/guatemala
+// Tarifa de grúa (inland) desde subasta hasta puerto en Miami
+export const shippingRates = mysqlTable("shipping_rates", {
+  id: int("id").autoincrement().primaryKey(),
+  brand: mysqlEnum("brand", ["copart", "iaai"]).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  stateCode: varchar("stateCode", { length: 10 }).notNull(),
+  inlandRateUsd: int("inlandRateUsd").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ShippingRate = typeof shippingRates.$inferSelect;
+export type InsertShippingRate = typeof shippingRates.$inferInsert;
+
+// Tarifas de flete marítimo por tamaño de vehículo (Royal Shipping - Santo Tomás de Castilla)
+export const oceanRates = mysqlTable("ocean_rates", {
+  id: int("id").autoincrement().primaryKey(),
+  vehicleSize: varchar("vehicleSize", { length: 50 }).notNull().unique(),
+  rateUsd: int("rateUsd").notNull(),
+  tier: int("tier").notNull(),
+  description: varchar("description", { length: 200 }),
+  maxLengthFt: decimal("maxLengthFt", { precision: 5, scale: 1 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OceanRate = typeof oceanRates.$inferSelect;
+export type InsertOceanRate = typeof oceanRates.$inferInsert;

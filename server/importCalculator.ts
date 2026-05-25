@@ -2,120 +2,216 @@
  * Calculadora de Costos de Importación - Ruta Cars GT
  * Calcula el costo total de importar un vehículo de USA a Guatemala
  *
- * LÓGICA DE PRECIOS:
- * - El cliente ve: costos reales + $500 "Servicio Ruta Cars GT"
- * - La ganancia real de Ruta Cars (mín Q10,000, calculada por IA según el vehículo)
- *   se reparte de forma invisible dentro del precio final que se le muestra al cliente
- * - El cliente NUNCA ve la ganancia real, solo los $500 de servicio
+ * ESTRUCTURA DE COSTOS:
+ * 1. Precio de subasta / Buy Now
+ * 2. Fees de plataforma (Copart o IAAI, según tabla oficial)
+ * 3. Transporte USA (grúa desde subasta al puerto) — precio real Royal Shipping
+ *    ↑ La ganancia de Ruta Cars GT se incluye aquí de forma invisible
+ * 4. Flete marítimo (Royal Shipping, Santo Tomás de Castilla) — precio real por tamaño
+ * 5. Impuestos Guatemala: 32% sobre CIF
+ * 6. Gastos varios: Q5,000
+ * 7. Servicio Ruta Cars GT: $500 (visible al cliente)
+ *
+ * GANANCIA OCULTA:
+ * - Se suma al precio de Transporte USA (línea 3)
+ * - El cliente ve un precio de transporte "normal" que incluye la ganancia
+ * - Nunca aparece como línea separada
  */
 
-export type VehicleSize = "small" | "medium" | "large" | "special";
+import { getDb } from "./db";
+import { shippingRates, oceanRates } from "../drizzle/schema";
+import { eq, and } from "drizzle-orm";
+
+export type VehicleSize = "sedan" | "small_suv" | "medium_suv" | "large_suv" | "xl_suv" | "special";
 export type AuctionPlatform = "copart" | "iaai";
 
 export interface VehicleSizeInfo {
   size: VehicleSize;
   label: string;
   needsManualQuote: boolean;
+  oceanTier: number;
 }
 
-// ─── Detección automática de tamaño del vehículo ─────────────────────────────
+// ─── Ganancia de Ruta Cars GT (oculta en Transporte USA) ──────────────────────
+// Esta ganancia se suma al precio de grúa real de Royal Shipping
+// El cliente ve el total como "Transporte USA" sin saber que incluye ganancia
+export const RUTA_CARS_PROFIT_USD = 500; // Ganancia fija en USD incluida en transporte
+
+// ─── Detección de tamaño del vehículo (mapeo a tiers de Royal Shipping) ───────
 export function detectVehicleSize(bodyType: string | null | undefined): VehicleSizeInfo {
-  if (!bodyType) return { size: "medium", label: "Mediano", needsManualQuote: false };
+  if (!bodyType) return { size: "medium_suv", label: "SUV Mediano", needsManualQuote: false, oceanTier: 4 };
   const bt = bodyType.toLowerCase();
 
+  // Especiales: requieren cotización manual
   if (
-    bt.includes("van") || bt.includes("bus") || bt.includes("motorhome") ||
-    bt.includes("rv") || bt.includes("trailer") || bt.includes("heavy") ||
-    bt.includes("commercial") || bt.includes("cab chassis")
+    bt.includes("bus") || bt.includes("motorhome") || bt.includes("rv") ||
+    bt.includes("trailer") || bt.includes("heavy") || bt.includes("commercial") ||
+    bt.includes("cab chassis") || bt.includes("boat")
   ) {
-    return { size: "special", label: "Especial (cotización manual)", needsManualQuote: true };
+    return { size: "special", label: "Especial (cotización manual)", needsManualQuote: true, oceanTier: 6 };
   }
+
+  // XL: Van, vehículos extra grandes (18-20 ft) → Tier 6
+  if (bt.includes("van") && !bt.includes("minivan")) {
+    return { size: "xl_suv", label: "Van / Extra Grande", needsManualQuote: false, oceanTier: 6 };
+  }
+
+  // Large: SUV grande, Pickup crew cab, Minivan (16.5-17.9 ft) → Tier 5
   if (
-    bt.includes("suv") || bt.includes("pickup") || bt.includes("4x4") ||
-    bt.includes("crew") || bt.includes("extended") || bt.includes("truck")
+    bt.includes("minivan") ||
+    (bt.includes("suv") && (bt.includes("large") || bt.includes("full"))) ||
+    bt.includes("crew") || bt.includes("extended cab")
   ) {
-    return { size: "large", label: "Grande (SUV/Pickup)", needsManualQuote: false };
+    return { size: "large_suv", label: "SUV Grande / Minivan", needsManualQuote: false, oceanTier: 5 };
   }
+
+  // Medium SUV / Pickup regular (15.1-16.4 ft) → Tier 4
+  if (
+    bt.includes("pickup") || bt.includes("truck") || bt.includes("4x4") ||
+    (bt.includes("suv") && !bt.includes("small") && !bt.includes("compact"))
+  ) {
+    return { size: "medium_suv", label: "SUV Mediano / Pickup", needsManualQuote: false, oceanTier: 4 };
+  }
+
+  // Small SUV / Crossover (max 15 ft) → Tier 3
+  if (
+    bt.includes("crossover") || bt.includes("wagon") ||
+    (bt.includes("suv") && (bt.includes("small") || bt.includes("compact")))
+  ) {
+    return { size: "small_suv", label: "SUV Pequeño / Crossover", needsManualQuote: false, oceanTier: 3 };
+  }
+
+  // Sedan / Coupe / Hatchback / Convertible (max 16 ft) → Tier 2
   if (
     bt.includes("sedan") || bt.includes("hatchback") || bt.includes("coupe") ||
-    bt.includes("convertible") || bt.includes("compact")
+    bt.includes("convertible") || bt.includes("compact") || bt.includes("saloon")
   ) {
-    return { size: "small", label: "Pequeño (Sedán/Hatchback)", needsManualQuote: false };
+    return { size: "sedan", label: "Sedán / Coupé", needsManualQuote: false, oceanTier: 2 };
   }
-  if (bt.includes("wagon") || bt.includes("crossover") || bt.includes("minivan")) {
-    return { size: "medium", label: "Mediano (Crossover/Wagon)", needsManualQuote: false };
-  }
-  return { size: "medium", label: "Mediano", needsManualQuote: false };
+
+  // Default: SUV Mediano
+  return { size: "medium_suv", label: "SUV Mediano", needsManualQuote: false, oceanTier: 4 };
 }
 
-// ─── Tarifas de Transporte Interno USA (RoyalShipping) ────────────────────────
-interface TransportRate {
-  stateCode: string;
-  stateName: string;
-  small: number;
-  medium: number;
-  large: number;
-  special: number;
+// ─── Tarifas de fallback (si la DB no está disponible) ────────────────────────
+// Precios reales de Royal Shipping por estado (promedio cuando no hay ciudad exacta)
+const FALLBACK_INLAND_RATES: Record<string, number> = {
+  AL: 575, AR: 825, AZ: 1050, CA: 1425, CO: 988, CT: 925, DE: 825,
+  FL: 265, GA: 464, IA: 900, IL: 813, IN: 808, KS: 925, KY: 825,
+  LA: 638, MA: 913, MD: 775, ME: 1050, MI: 938, MN: 925, MO: 838,
+  MS: 600, NC: 525, NH: 975, NJ: 825, NM: 1275, NV: 1275, NY: 950,
+  OH: 848, OK: 850, PA: 930, RI: 875, SC: 425, TN: 575, TX: 750,
+  VA: 717, WI: 913, WV: 838,
+  // Estados sin datos de Royal Shipping (estimados)
+  WA: 1500, OR: 1500, ID: 1300, MT: 1400, WY: 1200, UT: 1100,
+  SD: 1100, ND: 1200, NE: 1000, VT: 1050, AK: 0, HI: 0,
+};
+
+// Tarifas de flete marítimo de fallback (Royal Shipping - Santo Tomás de Castilla)
+const FALLBACK_OCEAN_RATES: Record<VehicleSize, number> = {
+  sedan: 875,
+  small_suv: 950,
+  medium_suv: 1100,
+  large_suv: 1250,
+  xl_suv: 1650,
+  special: 1650,
+};
+
+// ─── Obtener tarifa de grúa desde la DB ───────────────────────────────────────
+export async function getInlandRate(
+  stateCode: string,
+  platform: AuctionPlatform,
+  city?: string | null
+): Promise<{ rate: number; source: "exact" | "state_avg" | "fallback"; city?: string }> {
+  try {
+    const db = await getDb();
+    if (!db) throw new Error("DB not available");
+
+    const state = stateCode.toUpperCase();
+
+    // 1. Buscar por ciudad exacta + plataforma
+    if (city) {
+      const cityNormalized = city.replace(/\s+/g, " ").trim();
+      const exactMatch = await db
+        .select()
+        .from(shippingRates)
+        .where(and(
+          eq(shippingRates.stateCode, state),
+          eq(shippingRates.brand, platform),
+          eq(shippingRates.city, cityNormalized)
+        ))
+        .limit(1);
+
+      if (exactMatch[0]) {
+        return { rate: exactMatch[0].inlandRateUsd, source: "exact", city: exactMatch[0].city };
+      }
+
+      // 2. Buscar por ciudad sin importar plataforma
+      const cityAnyBrand = await db
+        .select()
+        .from(shippingRates)
+        .where(and(
+          eq(shippingRates.stateCode, state),
+          eq(shippingRates.city, cityNormalized)
+        ))
+        .limit(1);
+
+      if (cityAnyBrand[0]) {
+        return { rate: cityAnyBrand[0].inlandRateUsd, source: "exact", city: cityAnyBrand[0].city };
+      }
+    }
+
+    // 3. Promedio del estado + plataforma
+    const stateRates = await db
+      .select()
+      .from(shippingRates)
+      .where(and(
+        eq(shippingRates.stateCode, state),
+        eq(shippingRates.brand, platform)
+      ));
+
+    if (stateRates.length > 0) {
+      const avg = Math.round(stateRates.reduce((sum, r) => sum + r.inlandRateUsd, 0) / stateRates.length);
+      return { rate: avg, source: "state_avg" };
+    }
+
+    // 4. Promedio del estado cualquier plataforma
+    const stateAny = await db
+      .select()
+      .from(shippingRates)
+      .where(eq(shippingRates.stateCode, state));
+
+    if (stateAny.length > 0) {
+      const avg = Math.round(stateAny.reduce((sum, r) => sum + r.inlandRateUsd, 0) / stateAny.length);
+      return { rate: avg, source: "state_avg" };
+    }
+
+    throw new Error("No rates found");
+  } catch {
+    // Fallback a tabla estática
+    const rate = FALLBACK_INLAND_RATES[stateCode.toUpperCase()] ?? 850;
+    return { rate, source: "fallback" };
+  }
 }
 
-export const USA_TRANSPORT_RATES: TransportRate[] = [
-  { stateCode: "FL", stateName: "Florida", small: 250, medium: 300, large: 400, special: 0 },
-  { stateCode: "GA", stateName: "Georgia", small: 350, medium: 425, large: 550, special: 0 },
-  { stateCode: "SC", stateName: "South Carolina", small: 400, medium: 475, large: 600, special: 0 },
-  { stateCode: "NC", stateName: "North Carolina", small: 450, medium: 525, large: 650, special: 0 },
-  { stateCode: "VA", stateName: "Virginia", small: 500, medium: 575, large: 700, special: 0 },
-  { stateCode: "MD", stateName: "Maryland", small: 525, medium: 600, large: 725, special: 0 },
-  { stateCode: "DE", stateName: "Delaware", small: 550, medium: 625, large: 750, special: 0 },
-  { stateCode: "NJ", stateName: "New Jersey", small: 575, medium: 650, large: 775, special: 0 },
-  { stateCode: "NY", stateName: "New York", small: 600, medium: 675, large: 800, special: 0 },
-  { stateCode: "CT", stateName: "Connecticut", small: 625, medium: 700, large: 825, special: 0 },
-  { stateCode: "RI", stateName: "Rhode Island", small: 625, medium: 700, large: 825, special: 0 },
-  { stateCode: "MA", stateName: "Massachusetts", small: 650, medium: 725, large: 850, special: 0 },
-  { stateCode: "NH", stateName: "New Hampshire", small: 675, medium: 750, large: 875, special: 0 },
-  { stateCode: "VT", stateName: "Vermont", small: 675, medium: 750, large: 875, special: 0 },
-  { stateCode: "ME", stateName: "Maine", small: 700, medium: 775, large: 900, special: 0 },
-  { stateCode: "PA", stateName: "Pennsylvania", small: 550, medium: 625, large: 750, special: 0 },
-  { stateCode: "WV", stateName: "West Virginia", small: 525, medium: 600, large: 725, special: 0 },
-  { stateCode: "KY", stateName: "Kentucky", small: 500, medium: 575, large: 700, special: 0 },
-  { stateCode: "TN", stateName: "Tennessee", small: 450, medium: 525, large: 650, special: 0 },
-  { stateCode: "AL", stateName: "Alabama", small: 400, medium: 475, large: 600, special: 0 },
-  { stateCode: "MS", stateName: "Mississippi", small: 425, medium: 500, large: 625, special: 0 },
-  { stateCode: "LA", stateName: "Louisiana", small: 450, medium: 525, large: 650, special: 0 },
-  { stateCode: "AR", stateName: "Arkansas", small: 500, medium: 575, large: 700, special: 0 },
-  { stateCode: "TX", stateName: "Texas", small: 550, medium: 625, large: 750, special: 0 },
-  { stateCode: "OK", stateName: "Oklahoma", small: 575, medium: 650, large: 775, special: 0 },
-  { stateCode: "OH", stateName: "Ohio", small: 550, medium: 625, large: 750, special: 0 },
-  { stateCode: "IN", stateName: "Indiana", small: 575, medium: 650, large: 775, special: 0 },
-  { stateCode: "IL", stateName: "Illinois", small: 600, medium: 675, large: 800, special: 0 },
-  { stateCode: "MI", stateName: "Michigan", small: 600, medium: 675, large: 800, special: 0 },
-  { stateCode: "WI", stateName: "Wisconsin", small: 625, medium: 700, large: 825, special: 0 },
-  { stateCode: "MN", stateName: "Minnesota", small: 650, medium: 725, large: 850, special: 0 },
-  { stateCode: "IA", stateName: "Iowa", small: 625, medium: 700, large: 825, special: 0 },
-  { stateCode: "MO", stateName: "Missouri", small: 575, medium: 650, large: 775, special: 0 },
-  { stateCode: "KS", stateName: "Kansas", small: 600, medium: 675, large: 800, special: 0 },
-  { stateCode: "NE", stateName: "Nebraska", small: 625, medium: 700, large: 825, special: 0 },
-  { stateCode: "SD", stateName: "South Dakota", small: 650, medium: 725, large: 850, special: 0 },
-  { stateCode: "ND", stateName: "North Dakota", small: 675, medium: 750, large: 875, special: 0 },
-  { stateCode: "CO", stateName: "Colorado", small: 700, medium: 775, large: 900, special: 0 },
-  { stateCode: "WY", stateName: "Wyoming", small: 725, medium: 800, large: 925, special: 0 },
-  { stateCode: "MT", stateName: "Montana", small: 750, medium: 825, large: 950, special: 0 },
-  { stateCode: "ID", stateName: "Idaho", small: 775, medium: 850, large: 975, special: 0 },
-  { stateCode: "UT", stateName: "Utah", small: 750, medium: 825, large: 950, special: 0 },
-  { stateCode: "NV", stateName: "Nevada", small: 800, medium: 875, large: 1000, special: 0 },
-  { stateCode: "AZ", stateName: "Arizona", small: 775, medium: 850, large: 975, special: 0 },
-  { stateCode: "NM", stateName: "New Mexico", small: 700, medium: 775, large: 900, special: 0 },
-  { stateCode: "CA", stateName: "California", small: 900, medium: 975, large: 1100, special: 0 },
-  { stateCode: "OR", stateName: "Oregon", small: 950, medium: 1025, large: 1150, special: 0 },
-  { stateCode: "WA", stateName: "Washington", small: 975, medium: 1050, large: 1175, special: 0 },
-  { stateCode: "AK", stateName: "Alaska", small: 0, medium: 0, large: 0, special: 0 },
-  { stateCode: "HI", stateName: "Hawaii", small: 0, medium: 0, large: 0, special: 0 },
-];
+// ─── Obtener tarifa de flete marítimo desde la DB ─────────────────────────────
+export async function getOceanRate(vehicleSize: VehicleSize): Promise<number> {
+  try {
+    const db = await getDb();
+    if (!db) throw new Error("DB not available");
 
-export function getTransportRate(stateCode: string, size: VehicleSize): { rate: number; needsManualQuote: boolean } {
-  const state = USA_TRANSPORT_RATES.find(s => s.stateCode === stateCode.toUpperCase());
-  if (!state) return { rate: 650, needsManualQuote: false };
-  if (size === "special" || state[size] === 0) return { rate: 0, needsManualQuote: true };
-  return { rate: state[size], needsManualQuote: false };
+    const sizeKey = vehicleSize === "special" ? "xl_suv" : vehicleSize;
+    const result = await db
+      .select()
+      .from(oceanRates)
+      .where(eq(oceanRates.vehicleSize, sizeKey))
+      .limit(1);
+
+    if (result[0]) return result[0].rateUsd;
+    throw new Error("Rate not found");
+  } catch {
+    return FALLBACK_OCEAN_RATES[vehicleSize] ?? 1100;
+  }
 }
 
 // ─── Fees de Copart (Licensed Buyer via Autobid Master) ───────────────────────
@@ -215,7 +311,7 @@ export function calculateIAAIFees(bidPrice: number): PlatformFees {
   };
 }
 
-// ─── Calculadora Principal ────────────────────────────────────────────────────
+// ─── Calculadora Principal (async — usa DB para tarifas reales) ───────────────
 
 export interface ImportCalculationInput {
   auctionPrice: number;
@@ -223,89 +319,89 @@ export interface ImportCalculationInput {
   stateCode: string;
   bodyType: string | null;
   exchangeRate: number;
+  city?: string | null;
   /**
-   * Ganancia interna de Ruta Cars en GTQ (calculada por IA, mínimo Q10,000).
-   * NUNCA se muestra al cliente. Se reparte de forma invisible en el precio final.
+   * Ganancia interna de Ruta Cars en USD (se suma al Transporte USA, invisible al cliente).
+   * Por defecto: $500 USD
    */
-  internalProfitGTQ?: number;
+  internalProfitUSD?: number;
 }
 
 export interface ImportCalculationResult {
   // Costos reales en USD (lo que el cliente ve en el desglose)
   auctionPrice: number;
   platformFees: PlatformFees;
-  usaTransport: number;
-  maritimeShipping: number;
+  usaTransport: number;          // Grúa real Royal Shipping + ganancia oculta
+  usaTransportBase: number;      // Grúa real Royal Shipping (sin ganancia)
+  maritimeShipping: number;      // Flete marítimo real Royal Shipping
   cifValue: number;
-  guatemalaTax: number;       // 32% sobre CIF (impuesto unificado GT)
-  miscExpensesGTQ: number;    // Q5,000 gastos varios
-  rutaCarsServiceUSD: number; // $500 visible al cliente
-  totalCostUSD: number;       // Costo real sin ganancia interna
+  guatemalaTax: number;          // 32% sobre CIF
+  miscExpensesGTQ: number;       // Q5,000 gastos varios
+  rutaCarsServiceUSD: number;    // $500 visible al cliente
+  totalCostUSD: number;
 
-  // Precio final al cliente (incluye ganancia interna oculta)
+  // Precio final al cliente
   finalPriceUSD: number;
   finalPriceGTQ: number;
   exchangeRate: number;
 
-  // Ganancia interna (SOLO para uso del admin, nunca mostrar al cliente)
-  internalProfitGTQ: number;
-
-  // Info adicional
+  // Info de tarifas usadas
   vehicleSize: VehicleSizeInfo;
   needsManualQuote: boolean;
+  inlandRateSource: "exact" | "state_avg" | "fallback";
+  inlandCity?: string;
 
-  // Desglose visible al cliente (sin ganancia interna)
+  // Desglose visible al cliente
   breakdown: { label: string; amountUSD: number; amountGTQ: number }[];
 }
 
-export function calculateImportCost(input: ImportCalculationInput): ImportCalculationResult {
-  const { auctionPrice, platform, stateCode, bodyType, exchangeRate } = input;
+export async function calculateImportCost(input: ImportCalculationInput): Promise<ImportCalculationResult> {
+  const { auctionPrice, platform, stateCode, bodyType, exchangeRate, city } = input;
+  const internalProfitUSD = input.internalProfitUSD ?? RUTA_CARS_PROFIT_USD;
 
-  // 1. Fees de plataforma (automáticos según Copart o IAAI)
+  // 1. Fees de plataforma
   const platformFees = platform === "copart"
     ? calculateCopartFees(auctionPrice)
     : calculateIAAIFees(auctionPrice);
 
-  // 2. Tamaño del vehículo y transporte interno USA
+  // 2. Tamaño del vehículo
   const vehicleSize = detectVehicleSize(bodyType);
-  const transportInfo = getTransportRate(stateCode, vehicleSize.size);
-  const usaTransport = transportInfo.rate;
-  const needsManualQuote = transportInfo.needsManualQuote || vehicleSize.needsManualQuote;
+  const needsManualQuote = vehicleSize.needsManualQuote;
 
-  // 3. Shipping marítimo a Puerto Quetzal (desde Florida)
-  const maritimeShipping = 2800;
+  // 3. Tarifa de grúa real de Royal Shipping (desde DB)
+  const inlandInfo = await getInlandRate(stateCode, platform, city);
+  const usaTransportBase = inlandInfo.rate;
+  // Ganancia oculta sumada al transporte
+  const usaTransport = usaTransportBase + internalProfitUSD;
 
-  // 4. CIF = Precio + Fees + Transporte USA + Shipping Marítimo
+  // 4. Flete marítimo real de Royal Shipping (desde DB, por tamaño)
+  const maritimeShipping = await getOceanRate(vehicleSize.size);
+
+  // 5. CIF = Precio + Fees + Transporte USA (con ganancia) + Shipping Marítimo
   const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
 
-  // 5. Impuesto Guatemala: 32% sobre CIF (unificado: aranceles + IVA + trámites)
+  // 6. Impuesto Guatemala: 32% sobre CIF
   const guatemalaTax = Math.round(cifValue * 0.32);
 
-  // 6. Gastos varios fijos: Q5,000
+  // 7. Gastos varios fijos: Q5,000
   const miscExpensesGTQ = 5000;
 
-  // 7. Servicio Ruta Cars GT: $500 visible al cliente
+  // 8. Servicio Ruta Cars GT: $500 visible al cliente
   const rutaCarsServiceUSD = 500;
 
-  // 8. Costo total real en USD (sin ganancia interna)
+  // 9. Total final al cliente
   const totalCostUSD = cifValue + guatemalaTax / exchangeRate + miscExpensesGTQ / exchangeRate + rutaCarsServiceUSD;
-
-  // 9. Ganancia interna de Ruta Cars (mínimo Q10,000, calculada por IA)
-  //    Si no se provee, se usa el mínimo de Q10,000
-  const internalProfitGTQ = input.internalProfitGTQ ?? 10000;
-
-  // 10. Precio final al cliente = costo total + ganancia interna oculta
-  const finalPriceGTQ = Math.round(totalCostUSD * exchangeRate + miscExpensesGTQ + internalProfitGTQ);
+  const finalPriceGTQ = Math.round(totalCostUSD * exchangeRate);
   const finalPriceUSD = Math.round(finalPriceGTQ / exchangeRate);
 
-  // Desglose visible al cliente (sin ganancia interna)
+  // Desglose visible al cliente
   const breakdown = [
     { label: "Precio de Subasta", amountUSD: auctionPrice, amountGTQ: Math.round(auctionPrice * exchangeRate) },
-    { label: `Fees ${platform === "copart" ? "Copart" : "IAAI"}`, amountUSD: platformFees.total, amountGTQ: Math.round(platformFees.total * exchangeRate) },
-    { label: "Transporte Interno USA", amountUSD: usaTransport, amountGTQ: Math.round(usaTransport * exchangeRate) },
-    { label: "Shipping Marítimo (Puerto Quetzal)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
-    { label: "Impuestos Guatemala (32% sobre CIF)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
-    { label: "Gastos Varios (aduana, trámites)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
+    { label: `Fees ${platform === "copart" ? "Copart" : "IAAI"} + Autobid`, amountUSD: platformFees.total, amountGTQ: Math.round(platformFees.total * exchangeRate) },
+    { label: "Transporte USA (grúa al puerto)", amountUSD: usaTransport, amountGTQ: Math.round(usaTransport * exchangeRate) },
+    { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
+    { label: "Impuestos Guatemala (32% CIF)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
+    { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
     { label: "Servicio Ruta Cars GT", amountUSD: rutaCarsServiceUSD, amountGTQ: Math.round(rutaCarsServiceUSD * exchangeRate) },
   ];
 
@@ -313,6 +409,7 @@ export function calculateImportCost(input: ImportCalculationInput): ImportCalcul
     auctionPrice,
     platformFees,
     usaTransport,
+    usaTransportBase,
     maritimeShipping,
     cifValue,
     guatemalaTax,
@@ -322,9 +419,63 @@ export function calculateImportCost(input: ImportCalculationInput): ImportCalcul
     finalPriceUSD,
     finalPriceGTQ,
     exchangeRate,
-    internalProfitGTQ,
     vehicleSize,
     needsManualQuote,
+    inlandRateSource: inlandInfo.source,
+    inlandCity: inlandInfo.city,
     breakdown,
+    // Ganancia interna (solo para admin, nunca mostrar al cliente)
+    // internalProfitUSD: internalProfitUSD, // COMENTADO INTENCIONALMENTE
   };
 }
+
+// ─── Versión síncrona (para uso en cliente/frontend con datos estáticos) ──────
+// Usa las tarifas de fallback sin consultar la DB
+export function calculateImportCostSync(input: Omit<ImportCalculationInput, 'city'>): Omit<ImportCalculationResult, 'inlandRateSource' | 'inlandCity'> {
+  const { auctionPrice, platform, stateCode, bodyType, exchangeRate } = input;
+  const internalProfitUSD = input.internalProfitUSD ?? RUTA_CARS_PROFIT_USD;
+
+  const platformFees = platform === "copart"
+    ? calculateCopartFees(auctionPrice)
+    : calculateIAAIFees(auctionPrice);
+
+  const vehicleSize = detectVehicleSize(bodyType);
+  const needsManualQuote = vehicleSize.needsManualQuote;
+
+  const usaTransportBase = FALLBACK_INLAND_RATES[stateCode.toUpperCase()] ?? 850;
+  const usaTransport = usaTransportBase + internalProfitUSD;
+  const maritimeShipping = FALLBACK_OCEAN_RATES[vehicleSize.size] ?? 1100;
+
+  const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
+  const guatemalaTax = Math.round(cifValue * 0.32);
+  const miscExpensesGTQ = 5000;
+  const rutaCarsServiceUSD = 500;
+
+  const totalCostUSD = cifValue + guatemalaTax / exchangeRate + miscExpensesGTQ / exchangeRate + rutaCarsServiceUSD;
+  const finalPriceGTQ = Math.round(totalCostUSD * exchangeRate);
+  const finalPriceUSD = Math.round(finalPriceGTQ / exchangeRate);
+
+  const breakdown = [
+    { label: "Precio de Subasta", amountUSD: auctionPrice, amountGTQ: Math.round(auctionPrice * exchangeRate) },
+    { label: `Fees ${platform === "copart" ? "Copart" : "IAAI"} + Autobid`, amountUSD: platformFees.total, amountGTQ: Math.round(platformFees.total * exchangeRate) },
+    { label: "Transporte USA (grúa al puerto)", amountUSD: usaTransport, amountGTQ: Math.round(usaTransport * exchangeRate) },
+    { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
+    { label: "Impuestos Guatemala (32% CIF)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
+    { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
+    { label: "Servicio Ruta Cars GT", amountUSD: rutaCarsServiceUSD, amountGTQ: Math.round(rutaCarsServiceUSD * exchangeRate) },
+  ];
+
+  return {
+    auctionPrice, platformFees, usaTransport, usaTransportBase, maritimeShipping,
+    cifValue, guatemalaTax, miscExpensesGTQ, rutaCarsServiceUSD, totalCostUSD,
+    finalPriceUSD, finalPriceGTQ, exchangeRate, vehicleSize, needsManualQuote, breakdown,
+  };
+}
+
+// ─── Exportar datos estáticos para uso en cliente ─────────────────────────────
+export const USA_TRANSPORT_RATES = Object.entries(FALLBACK_INLAND_RATES).map(([stateCode, rate]) => ({
+  stateCode,
+  rate,
+}));
+
+export const OCEAN_RATES_BY_SIZE = FALLBACK_OCEAN_RATES;

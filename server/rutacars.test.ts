@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { calculateCopartFees, calculateIAAIFees, calculateImportCost, getTransportRate, detectVehicleSize } from "./importCalculator";
+import {
+  calculateCopartFees,
+  calculateIAAIFees,
+  calculateImportCostSync,
+  detectVehicleSize,
+  USA_TRANSPORT_RATES,
+  OCEAN_RATES_BY_SIZE,
+} from "./importCalculator";
 
 describe("Copart fees", () => {
   it("calculates buyer fee for $5000 bid", () => {
@@ -46,57 +53,73 @@ describe("IAAI fees", () => {
 });
 
 describe("Vehicle size detection", () => {
-  it("detects large size from SUV body type", () => {
+  it("detects medium_suv size from SUV body type", () => {
     const size = detectVehicleSize("SUV");
-    expect(size.size).toBe("large");
+    expect(size.size).toBe("medium_suv");
     expect(size.needsManualQuote).toBe(false);
   });
 
-  it("detects large size from Pickup body type", () => {
+  it("detects medium_suv size from Pickup body type", () => {
     const size = detectVehicleSize("Pickup");
-    expect(size.size).toBe("large");
+    expect(size.size).toBe("medium_suv");
   });
 
-  it("detects small size from Sedan", () => {
+  it("detects sedan size from Sedan", () => {
     const size = detectVehicleSize("Sedan");
-    expect(size.size).toBe("small");
+    expect(size.size).toBe("sedan");
     expect(size.needsManualQuote).toBe(false);
   });
 
-  it("defaults to medium for unknown body type", () => {
+  it("defaults to medium_suv for unknown body type", () => {
     const size = detectVehicleSize(null);
-    expect(size.size).toBe("medium");
+    expect(size.size).toBe("medium_suv");
     expect(size.needsManualQuote).toBe(false);
   });
 
-  it("marks vans as special (manual quote)", () => {
+  it("marks large vans as xl_suv (not special)", () => {
     const size = detectVehicleSize("Van");
+    expect(size.size).toBe("xl_suv");
+    expect(size.needsManualQuote).toBe(false);
+  });
+
+  it("marks motorhome as special (manual quote)", () => {
+    const size = detectVehicleSize("Motorhome");
     expect(size.size).toBe("special");
     expect(size.needsManualQuote).toBe(true);
   });
 });
 
-describe("Transport rate lookup", () => {
-  it("returns rate for Florida large vehicle", () => {
-    const result = getTransportRate("FL", "large");
-    expect(result.needsManualQuote).toBe(false);
-    expect(result.rate).toBeGreaterThan(0);
+describe("Transport rate lookup (static fallback)", () => {
+  it("has rates for Florida", () => {
+    const fl = USA_TRANSPORT_RATES.find(r => r.stateCode === "FL");
+    expect(fl).toBeDefined();
+    expect(fl!.rate).toBeGreaterThan(0);
   });
 
-  it("returns manual quote for special vehicles", () => {
-    const result = getTransportRate("FL", "special");
-    expect(result.needsManualQuote).toBe(true);
-  });
-
-  it("returns a rate for Texas medium vehicle", () => {
-    const result = getTransportRate("TX", "medium");
-    expect(result.rate).toBeGreaterThan(0);
+  it("has rates for California", () => {
+    const ca = USA_TRANSPORT_RATES.find(r => r.stateCode === "CA");
+    expect(ca).toBeDefined();
+    expect(ca!.rate).toBeGreaterThan(0);
   });
 
   it("California rate is higher than Florida rate (distance)", () => {
-    const fl = getTransportRate("FL", "medium");
-    const ca = getTransportRate("CA", "medium");
-    expect(ca.rate).toBeGreaterThan(fl.rate);
+    const fl = USA_TRANSPORT_RATES.find(r => r.stateCode === "FL")!.rate;
+    const ca = USA_TRANSPORT_RATES.find(r => r.stateCode === "CA")!.rate;
+    expect(ca).toBeGreaterThan(fl);
+  });
+});
+
+describe("Ocean rates by vehicle size", () => {
+  it("sedan rate is $875", () => {
+    expect(OCEAN_RATES_BY_SIZE.sedan).toBe(875);
+  });
+
+  it("xl_suv rate is higher than sedan rate", () => {
+    expect(OCEAN_RATES_BY_SIZE.xl_suv).toBeGreaterThan(OCEAN_RATES_BY_SIZE.sedan);
+  });
+
+  it("medium_suv rate is $1100", () => {
+    expect(OCEAN_RATES_BY_SIZE.medium_suv).toBe(1100);
   });
 });
 
@@ -110,9 +133,10 @@ describe("Full import cost calculation (nueva lógica: 32% GT unificado)", () =>
   };
 
   it("calculates total import cost for Copart Florida sedan at $5000", () => {
-    const result = calculateImportCost(baseInput);
+    const result = calculateImportCostSync(baseInput);
     expect(result.auctionPrice).toBe(5000);
-    expect(result.maritimeShipping).toBe(2800);
+    // Maritime shipping for sedan is $875 (Royal Shipping real rate)
+    expect(result.maritimeShipping).toBe(875);
     expect(result.rutaCarsServiceUSD).toBe(500);
     expect(result.finalPriceUSD).toBeGreaterThan(5000);
     expect(result.finalPriceGTQ).toBeGreaterThan(result.finalPriceUSD * 7);
@@ -120,68 +144,61 @@ describe("Full import cost calculation (nueva lógica: 32% GT unificado)", () =>
   });
 
   it("applies 32% Guatemala tax on CIF value", () => {
-    const result = calculateImportCost(baseInput);
+    const result = calculateImportCostSync(baseInput);
     const expectedCif = result.auctionPrice + result.platformFees.total + result.usaTransport + result.maritimeShipping;
     expect(result.cifValue).toBe(expectedCif);
     expect(result.guatemalaTax).toBe(Math.round(expectedCif * 0.32));
   });
 
   it("miscExpensesGTQ is fixed at Q5,000", () => {
-    const result = calculateImportCost(baseInput);
+    const result = calculateImportCostSync(baseInput);
     expect(result.miscExpensesGTQ).toBe(5000);
   });
 
   it("Servicio Ruta Cars GT is $500 in breakdown (visible al cliente)", () => {
-    const result = calculateImportCost(baseInput);
+    const result = calculateImportCostSync(baseInput);
     const servicioItem = result.breakdown.find(b => b.label.includes("Ruta Cars"));
     expect(servicioItem).toBeDefined();
     expect(servicioItem?.amountUSD).toBe(500);
   });
 
-  it("final price includes internal profit (min Q10,000) oculto", () => {
-    const result = calculateImportCost(baseInput);
-    const baseCostGTQ = result.totalCostUSD * result.exchangeRate + result.miscExpensesGTQ;
-    expect(result.finalPriceGTQ).toBeGreaterThanOrEqual(Math.round(baseCostGTQ) + 10000);
-  });
-
-  it("higher internalProfitGTQ produces higher final price", () => {
-    const r1 = calculateImportCost({ ...baseInput, internalProfitGTQ: 10000 });
-    const r2 = calculateImportCost({ ...baseInput, internalProfitGTQ: 20000 });
-    expect(r2.finalPriceGTQ).toBeGreaterThan(r1.finalPriceGTQ);
-    expect(r2.internalProfitGTQ).toBe(20000);
+  it("usaTransport includes base rate + $500 profit (hidden)", () => {
+    const result = calculateImportCostSync(baseInput);
+    // usaTransportBase is the real Royal Shipping rate, usaTransport adds $500 profit
+    expect(result.usaTransport).toBe(result.usaTransportBase + 500);
   });
 
   it("breakdown does NOT expose internal profit to client", () => {
-    const result = calculateImportCost(baseInput);
+    const result = calculateImportCostSync(baseInput);
     const labels = result.breakdown.map(b => b.label.toLowerCase());
     expect(labels.some(l => l.includes("ganancia") || l.includes("profit") || l.includes("internal"))).toBe(false);
   });
 
-  it("marks special vehicles (Van) as needing manual quote", () => {
-    const result = calculateImportCost({ ...baseInput, bodyType: "Van" });
+  it("marks special vehicles (Motorhome) as needing manual quote", () => {
+    const result = calculateImportCostSync({ ...baseInput, bodyType: "Motorhome" });
     expect(result.needsManualQuote).toBe(true);
   });
 
   it("calculates IAAI fees correctly", () => {
-    const result = calculateImportCost({ ...baseInput, platform: "iaai" });
+    const result = calculateImportCostSync({ ...baseInput, platform: "iaai" });
     expect(result.auctionPrice).toBe(5000);
     expect(result.platformFees.virtualBidFee).toBe(75);
     expect(result.finalPriceUSD).toBeGreaterThan(5000);
   });
 
   it("CIF includes auction price, fees, transport and shipping", () => {
-    const result = calculateImportCost({ ...baseInput, auctionPrice: 4000 });
+    const result = calculateImportCostSync({ ...baseInput, auctionPrice: 4000 });
     const expectedCIF = result.auctionPrice + result.platformFees.total + result.usaTransport + result.maritimeShipping;
     expect(result.cifValue).toBe(expectedCIF);
   });
 
   it("breakdown has all expected line items", () => {
-    const result = calculateImportCost(baseInput);
+    const result = calculateImportCostSync(baseInput);
     const labels = result.breakdown.map(b => b.label);
     expect(labels.some(l => l.includes("Subasta"))).toBe(true);
     expect(labels.some(l => l.includes("Fees") || l.includes("Copart") || l.includes("IAAI"))).toBe(true);
     expect(labels.some(l => l.includes("Transporte"))).toBe(true);
-    expect(labels.some(l => l.includes("Shipping") || l.includes("Mar\u00edtimo"))).toBe(true);
+    expect(labels.some(l => l.includes("Shipping") || l.includes("Marítimo"))).toBe(true);
     expect(labels.some(l => l.includes("Impuesto") || l.includes("32%"))).toBe(true);
     expect(labels.some(l => l.includes("Gastos"))).toBe(true);
     expect(labels.some(l => l.includes("Ruta Cars"))).toBe(true);
