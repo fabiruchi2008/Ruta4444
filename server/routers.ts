@@ -22,7 +22,7 @@ import {
   getGtMarketPrice,
 } from "./importCalculator";
 import { getDb } from "./db";
-import { quotes, contacts, settings, featuredVehicles } from "../drizzle/schema";
+import { quotes, contacts, settings, featuredVehicles, quotePdfs } from "../drizzle/schema";
 import { eq, desc, asc } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
@@ -487,6 +487,55 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
         await db.update(quotes).set({ status: input.status as any }).where(eq(quotes.id, input.id));
         return { success: true };
       }),
+
+    saveQuotePdf: adminProcedure
+      .input(z.object({
+        folio: z.string(),
+        lotNumber: z.string(),
+        vehicleName: z.string(),
+        vehicleVin: z.string().nullable().optional(),
+        platform: z.string().nullable().optional(),
+        stateCode: z.string().nullable().optional(),
+        clientName: z.string().nullable().optional(),
+        clientDpi: z.string().nullable().optional(),
+        clientPhone: z.string().nullable().optional(),
+        agreedPriceUSD: z.number().nullable().optional(),
+        agreedPriceGTQ: z.number().nullable().optional(),
+        totalCostUSD: z.number().nullable().optional(),
+        notes: z.string().nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.insert(quotePdfs).values({
+          folio: input.folio,
+          lotNumber: input.lotNumber,
+          vehicleName: input.vehicleName,
+          vehicleVin: input.vehicleVin ?? null,
+          platform: input.platform ?? null,
+          stateCode: input.stateCode ?? null,
+          clientName: input.clientName ?? null,
+          clientDpi: input.clientDpi ?? null,
+          clientPhone: input.clientPhone ?? null,
+          agreedPriceUSD: input.agreedPriceUSD != null ? String(input.agreedPriceUSD) : null,
+          agreedPriceGTQ: input.agreedPriceGTQ != null ? String(input.agreedPriceGTQ) : null,
+          totalCostUSD: input.totalCostUSD != null ? String(input.totalCostUSD) : null,
+          notes: input.notes ?? null,
+        });
+        return { success: true };
+      }),
+
+    getQuotePdfs: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await db.select().from(quotePdfs).orderBy(desc(quotePdfs.createdAt)).limit(200);
+      return rows.map(r => ({
+        ...r,
+        agreedPriceUSD: r.agreedPriceUSD ? parseFloat(r.agreedPriceUSD) : null,
+        agreedPriceGTQ: r.agreedPriceGTQ ? parseFloat(r.agreedPriceGTQ) : null,
+        totalCostUSD: r.totalCostUSD ? parseFloat(r.totalCostUSD) : null,
+      }));
+    }),
 
     // Calculadora de costo real (sin ganancia) — solo para admin
     calculateReal: adminProcedure

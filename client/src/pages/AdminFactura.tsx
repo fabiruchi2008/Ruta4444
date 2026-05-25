@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowLeft, Search, Download, Loader2, AlertTriangle, FileText, User, Car, MapPin, Calendar, Hash } from "lucide-react";
+import { ArrowLeft, Search, Download, Loader2, AlertTriangle, FileText, User, Car, DollarSign, CheckCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,8 +49,11 @@ export default function AdminFactura() {
   const [clientDPI, setClientDPI] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [agreedPriceUSD, setAgreedPriceUSD] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [savedOk, setSavedOk] = useState(false);
   const facturaRef = useRef<HTMLDivElement>(null);
+  const utils = trpc.useUtils();
 
   const { data: vehicle, isLoading, error } = trpc.vehicleDetail.getById.useQuery(
     { id: searchLot },
@@ -67,6 +70,20 @@ export default function AdminFactura() {
     { auctionPrice, platform, stateCode, bodyType },
     { enabled: !!vehicle && auctionPrice > 0, staleTime: 0 }
   );
+
+  const saveQuotePdf = trpc.admin.saveQuotePdf.useMutation({
+    onSuccess: () => {
+      setSavedOk(true);
+      utils.admin.getQuotePdfs.invalidate();
+      setTimeout(() => setSavedOk(false), 3000);
+    },
+  });
+
+  const { data: historial } = trpc.admin.getQuotePdfs.useQuery(undefined, { staleTime: 30000 });
+
+  const agreedUSD = agreedPriceUSD ? parseFloat(agreedPriceUSD) : null;
+  const exchangeRate = 7.75;
+  const agreedGTQ = agreedUSD ? Math.round(agreedUSD * exchangeRate) : null;
 
   if (!isAuthenticated || user?.role !== "admin") {
     return (
@@ -110,6 +127,22 @@ export default function AdminFactura() {
       const vehicleName = vehicle?.name ?? "vehiculo";
       const clientSlug = clientName ? `-${clientName.replace(/\s+/g, "_")}` : "";
       pdf.save(`RutaCars-Cotizacion-${vehicleName}${clientSlug}.pdf`);
+      // Guardar en historial
+      saveQuotePdf.mutate({
+        folio,
+        lotNumber: lot?.lot ?? searchLot,
+        vehicleName: vehicle?.name ?? "Vehículo",
+        vehicleVin: vehicle?.vin ?? null,
+        platform,
+        stateCode,
+        clientName: clientName || null,
+        clientDpi: clientDPI || null,
+        clientPhone: clientPhone || null,
+        agreedPriceUSD: agreedUSD,
+        agreedPriceGTQ: agreedGTQ,
+        totalCostUSD: calcData?.finalPriceUSD ?? null,
+        notes: notes || null,
+      });
     } finally {
       setDownloading(false);
     }
@@ -191,6 +224,27 @@ export default function AdminFactura() {
               <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Entrega estimada: 45-60 días" className="bg-[#141E30] border-[#243048] text-white" />
             </div>
           </div>
+
+          {/* Precio acordado */}
+          {vehicle && (
+            <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-5 space-y-3">
+              <h2 className="font-bold text-white flex items-center gap-2"><DollarSign className="w-4 h-4 text-[#00C8E0]" /> Precio Acordado con Cliente</h2>
+              <p className="text-slate-400 text-xs">Opcional. Si ya acordaste un precio, ingresálo aquí para que aparezca en el PDF.</p>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-bold">$</span>
+                <Input
+                  type="number"
+                  value={agreedPriceUSD}
+                  onChange={e => setAgreedPriceUSD(e.target.value)}
+                  placeholder="Ej: 18500"
+                  className="bg-[#141E30] border-[#243048] text-white"
+                />
+              </div>
+              {agreedUSD && (
+                <p className="text-[#00C8E0] text-sm font-semibold">= Q{(agreedUSD * 7.75).toLocaleString("es-GT", { maximumFractionDigits: 0 })} GTQ</p>
+              )}
+            </div>
+          )}
 
           {/* Botón descargar */}
           {vehicle && (
@@ -304,6 +358,20 @@ export default function AdminFactura() {
                 </div>
               )}
 
+              {/* Precio Acordado */}
+              {agreedUSD && (
+                <div style={{ background: "#ECFDF5", border: "2px solid #10B981", borderRadius: "8px", padding: "14px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: "700", color: "#065F46", textTransform: "uppercase", letterSpacing: "1px" }}>Precio Acordado con Cliente</div>
+                    <div style={{ fontSize: "10px", color: "#6EE7B7", marginTop: "2px" }}>Precio final confirmado</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "22px", fontWeight: "900", color: "#059669" }}>${agreedUSD.toLocaleString("es-GT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} USD</div>
+                    {agreedGTQ && <div style={{ fontSize: "13px", color: "#10B981" }}>Q{agreedGTQ.toLocaleString("es-GT")} GTQ</div>}
+                  </div>
+                </div>
+              )}
+
               {/* Notas */}
               {notes && (
                 <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "8px", padding: "12px", marginBottom: "20px" }}>
@@ -333,6 +401,67 @@ export default function AdminFactura() {
           )}
         </div>
       </div>
+
+      {/* Historial de cotizaciones */}
+      {historial && historial.length > 0 && (
+        <div className="container max-w-5xl px-4 pb-12">
+          <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-5">
+            <h2 className="font-bold text-white flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 text-[#00C8E0]" /> Historial de Cotizaciones Generadas
+              <span className="text-xs bg-[#243048] text-slate-400 px-2 py-0.5 rounded ml-1">{historial.length}</span>
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#243048] text-slate-400 text-xs">
+                    <th className="text-left py-2 pr-4">Folio</th>
+                    <th className="text-left py-2 pr-4">Vehículo</th>
+                    <th className="text-left py-2 pr-4">Cliente</th>
+                    <th className="text-left py-2 pr-4">Precio Acordado</th>
+                    <th className="text-left py-2 pr-4">Costo Real</th>
+                    <th className="text-left py-2">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historial.map(q => (
+                    <tr key={q.id} className="border-b border-[#1F2D45] hover:bg-[#141E30] transition-colors">
+                      <td className="py-2.5 pr-4 font-mono text-[#00C8E0] text-xs">{q.folio}</td>
+                      <td className="py-2.5 pr-4">
+                        <div className="font-semibold text-white text-xs">{q.vehicleName}</div>
+                        <div className="text-slate-500 text-xs">Lote: {q.lotNumber}</div>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <div className="text-white text-xs">{q.clientName || <span className="text-slate-600">Sin nombre</span>}</div>
+                        {q.clientDpi && <div className="text-slate-500 text-xs">DPI: {q.clientDpi}</div>}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {q.agreedPriceUSD
+                          ? <span className="text-green-400 font-bold text-xs">${q.agreedPriceUSD.toLocaleString()}</span>
+                          : <span className="text-slate-600 text-xs">—</span>}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {q.totalCostUSD
+                          ? <span className="text-slate-300 text-xs">${q.totalCostUSD.toLocaleString()}</span>
+                          : <span className="text-slate-600 text-xs">—</span>}
+                      </td>
+                      <td className="py-2.5 text-slate-400 text-xs">
+                        {new Date(q.createdAt).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast guardado */}
+      {savedOk && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 z-50 animate-in slide-in-from-bottom-4">
+          <CheckCircle className="w-4 h-4" /> Cotización guardada en historial
+        </div>
+      )}
     </div>
   );
 }

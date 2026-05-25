@@ -165,3 +165,25 @@ export const gtMarketPrices = mysqlTable("gt_market_prices", {
 
 export type GtMarketPrice = typeof gtMarketPrices.$inferSelect;
 export type InsertGtMarketPrice = typeof gtMarketPrices.$inferInsert;
+
+// ─── Historial de Cotizaciones PDF (Admin) ──────────────────────────────────
+export const quotePdfs = mysqlTable("quote_pdfs", {
+  id: int("id").autoincrement().primaryKey(),
+  folio: varchar("folio", { length: 30 }).notNull(),
+  lotNumber: varchar("lotNumber", { length: 50 }).notNull(),
+  vehicleName: varchar("vehicleName", { length: 255 }).notNull(),
+  vehicleVin: varchar("vehicleVin", { length: 50 }),
+  platform: varchar("platform", { length: 20 }),
+  stateCode: varchar("stateCode", { length: 10 }),
+  clientName: varchar("clientName", { length: 255 }),
+  clientDpi: varchar("clientDpi", { length: 50 }),
+  clientPhone: varchar("clientPhone", { length: 50 }),
+  agreedPriceUSD: decimal("agreedPriceUSD", { precision: 10, scale: 2 }),
+  agreedPriceGTQ: decimal("agreedPriceGTQ", { precision: 12, scale: 2 }),
+  totalCostUSD: decimal("totalCostUSD", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type QuotePdf = typeof quotePdfs.$inferSelect;
+export type InsertQuotePdf = typeof quotePdfs.$inferInsert;

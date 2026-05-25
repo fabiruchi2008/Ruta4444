@@ -164,3 +164,10 @@
 - [x] Página AdminFactura.tsx: buscar por lote, campos editables (nombre, DPI, teléfono, notas), vista previa
 - [x] Generación de PDF con diseño Ruta Cars GT (logo, colores, desglose, foto del carro)
 - [x] Ruta /admin/factura y botón "Cotización PDF" en panel admin
+
+## Mejoras Cotización PDF v2
+
+- [x] Campo "Precio Acordado" editable en AdminFactura (se muestra en el PDF como precio final al cliente)
+- [x] Tabla quote_pdfs en DB: guardar historial de cotizaciones generadas (lote, cliente, precio, fecha)
+- [x] Endpoint admin.saveQuotePdf y admin.getQuotePdfs
+- [x] Historial de cotizaciones PDF en página /admin/factura (tabla con folio, vehículo, cliente, precio acordado, costo real, fecha)
