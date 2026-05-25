@@ -101,3 +101,15 @@
 - [x] Filtro de fecha de subasta (próximas subastas)
 - [x] Verificar disponibilidad de vehículos con API (status=0, exclude_expired=1)
 - [x] Mejoras visuales de tarjetas de vehículos (badges, precios destacados)
+
+## Mejoras v5 (Calculadora Dual + UI/UX + Español)
+- [x] VehicleDetail: calculadora dual — si solo subasta: 1 calculadora con input de monto a pujar; si solo buy now: 1 calculadora fija con precio buy now; si ambos: 2 calculadoras (buy now resaltada + subasta interactiva con input)
+- [x] Calculadora de subasta: input donde el usuario escribe cuánto planea pujar → cotización automática en tiempo real
+- [x] Botón "Comprar Ahora" (verde prominente) en tarjetas y detalle cuando hay buy now
+- [x] Traducir todos los valores de la API al español: gasoline→Gasolina, diesel→Diésel, automatic→Automático, manual→Manual, run_and_drives→Enciende y Maneja, engine_starts→Motor Enciende, not_run→No Enciende, enhanced→Mejorado, etc.
+- [x] Traducir tipos de daño al español: Front End→Daño Frontal, Flood→Inundación, Normal Wear→Desgaste Normal, Vandalism→Vandalismo, Theft Recovery→Recuperado de Robo, Rear End→Daño Trasero, etc.
+- [x] Mejorar fuentes: revisar y corregir todas las fuentes que se ven como "sitio en desarrollo"
+- [x] Mejorar colores: revisar badges, textos y fondos que se ven mal
+- [x] Filtros del catálogo: agregar Run & Drive (condición), Daño primario, Combustible, Transmisión visibles en panel básico
+- [x] Cambiar "Buy Now" a "Comprar Ahora" en toda la UI
+- [x] Actualización automática del catálogo (refetch cada 5 minutos para precios actualizados)

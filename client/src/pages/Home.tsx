@@ -42,7 +42,7 @@ function normalizeVehicle(v: any) {
     make: v.manufacturer?.name ?? v.make ?? "",
     model: v.model?.name ?? v.model ?? "",
     bidPrice: lot.bid ?? lot.final_bid ?? v.bid_price ?? 0,
-    buyNowPrice: lot.buy_now_price ?? v.buy_now_price ?? null,
+    buyNowPrice: (lot.buy_now != null && lot.buy_now > 0 ? lot.buy_now : null) ?? lot.buy_now_price ?? v.buy_now_price ?? null,
     image: images[0] || v.image_url || null,
     platform: domainId === 3 ? "Copart" : "IAAI",
     platformColor: domainId === 3 ? "#00C8E0" : "#F97316",
