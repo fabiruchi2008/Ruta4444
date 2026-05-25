@@ -2,7 +2,7 @@ import { useParams } from "wouter";
 import { Car, Gauge, Fuel, MapPin, Calendar, ArrowLeft, MessageCircle, ChevronLeft, ChevronRight, Loader2, DollarSign, Ship, Truck, Receipt, Info, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import type { AuctionVehicle } from "../../../server/auctionsApi";
 
@@ -48,7 +48,17 @@ function BreakdownRow({ label, usd, gtq, highlight = false }: { label: string; u
 
 export default function VehicleDetail() {
   const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
   const [imgIdx, setImgIdx] = useState(0);
+
+  function goBackToCatalog() {
+    // Go back in history so the catalog restores its saved position
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate("/catalogo");
+    }
+  }
 
   const { data: rawVehicle, isLoading } = trpc.vehicleDetail.getById.useQuery(
     { id: id! },
@@ -103,11 +113,9 @@ export default function VehicleDetail() {
   return (
     <div className="min-h-screen bg-[#080D18] pt-20">
       <div className="container py-8">
-        <Link href="/catalogo">
-          <Button variant="outline" className="border-[#243048] text-slate-400 hover:text-white mb-6 btn-press">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Volver al Catálogo
-          </Button>
-        </Link>
+        <Button onClick={goBackToCatalog} variant="outline" className="border-[#243048] text-slate-400 hover:text-white mb-6 btn-press">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Volver al Catálogo
+        </Button>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* ── Galería de imágenes ── */}

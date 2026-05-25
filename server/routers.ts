@@ -89,6 +89,8 @@ export const appRouter = router({
         minutes: z.number().optional(),
         simple_paginate: z.number().optional(),
         status: z.number().optional(),
+        sort: z.string().optional(),
+        order: z.enum(["asc", "desc"]).optional(),
       }))
       .query(async ({ input }) => {
         return searchCars(input as SearchCarsParams);

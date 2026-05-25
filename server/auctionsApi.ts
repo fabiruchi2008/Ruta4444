@@ -273,6 +273,8 @@ export interface SearchCarsParams {
   minutes?: number;
   simple_paginate?: number;
   status?: number;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 // ─── TTL constants ────────────────────────────────────────────────────────────
@@ -282,7 +284,7 @@ const CACHE_1HOUR = 60 * 60 * 1000;
 // ─── API functions ─────────────────────────────────────────────────────────────
 
 export async function searchCars(params: SearchCarsParams = {}): Promise<AuctionListResponse> {
-  const { search_query, simple_paginate, ...rest } = params;
+  const { search_query, simple_paginate, sort, order, ...rest } = params;
   const p: Record<string, string | number | undefined> = {
     per_page: rest.per_page ?? 24,
     page: rest.page ?? 1,
@@ -290,6 +292,10 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     simple_paginate: 0,
     ...rest,
   };
+  // Pass sort/order to API (AuctionsAPI supports sort param)
+  if (sort) p.sort = sort;
+  if (order) p.order = order;
+
   if (search_query && search_query.trim()) {
     const q = search_query.trim();
     if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(q) || /^\d{6,12}$/.test(q)) {
@@ -298,7 +304,25 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       p.name = q;
     }
   }
-  return apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
+  const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
+
+  // Client-side sort fallback: if sort was requested, sort the returned page
+  if (sort && result.data && Array.isArray(result.data)) {
+    result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
+      const aLot = a.lots?.[0];
+      const bLot = b.lots?.[0];
+      let aVal = 0, bVal = 0;
+      if (sort === "buy_now_price") {
+        aVal = aLot?.buy_now_price ?? 0;
+        bVal = bLot?.buy_now_price ?? 0;
+      } else if (sort === "bid") {
+        aVal = aLot?.bid ?? aLot?.final_bid ?? 0;
+        bVal = bLot?.bid ?? bLot?.final_bid ?? 0;
+      }
+      return order === "desc" ? bVal - aVal : aVal - bVal;
+    });
+  }
+  return result;
 }
 
 export async function searchByVin(vin: string): Promise<{ data: AuctionVehicle }> {

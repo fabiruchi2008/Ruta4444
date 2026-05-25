@@ -84,3 +84,10 @@
 - [x] Ganancia Ruta Cars oculta (mín Q10,000 calculada por IA, solo se muestra $500 Servicio)
 - [x] Actualizar importCalculator.ts con nueva lógica
 - [x] Rediseñar catálogo estilo AutoBidMaster con filtros de precio
+
+## Mejoras Catálogo v3
+- [x] Filtro ordenamiento por precio Buy Now (mayor a menor / menor a mayor) - barra de sort siempre visible
+- [x] Filtro ordenamiento por precio de puja (mayor a menor / menor a mayor)
+- [x] Filtro por lugar de subasta (estado USA, ej: TX, FL) - input en panel de filtros avanzados
+- [x] Persistir posición del catálogo al volver del detalle - sessionStorage + history.back()
+- [x] Excluir vehículos ya vendidos del catálogo - status: 0 en queryInput

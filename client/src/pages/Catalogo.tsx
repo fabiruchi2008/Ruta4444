@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, X, Car, Fuel, Gauge, Calendar, MapPin, Calculator, MessageCircle } from "lucide-react";
+import { Search, Filter, X, Car, Fuel, Gauge, Calendar, MapPin, Calculator, MessageCircle, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 const DOMAINS = [
   { id: 3, label: "Copart", value: 3 },
@@ -167,8 +167,39 @@ function detectSearchType(q: string): "vin" | "lot" | "general" {
   return "general";
 }
 
+// Persist catalog state in sessionStorage so back-navigation restores position
+const STORAGE_KEY = "rutacars_catalog_filters";
+
+type CatalogFilters = {
+  search_query: string;
+  domain_id: number | undefined;
+  manufacturer_id: number | undefined;
+  model_id: number | undefined;
+  from_year: number | undefined;
+  to_year: number | undefined;
+  bid_price_from: number | undefined;
+  bid_price_to: number | undefined;
+  body_type: number | undefined;
+  state_code: string | undefined;
+  sort: string | undefined;
+  order: "asc" | "desc" | undefined;
+  buy_now: number | undefined;
+  page: number;
+  per_page: number;
+};
+
+function loadSavedFilters(): Partial<CatalogFilters> | null {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return null;
+}
+
 export default function Catalogo() {
-  const [filters, setFilters] = useState({
+  const [, navigate] = useLocation();
+  const savedFilters = loadSavedFilters();
+  const [filters, setFilters] = useState<CatalogFilters>({
     search_query: "",
     domain_id: undefined as number | undefined,
     manufacturer_id: undefined as number | undefined,
@@ -178,8 +209,13 @@ export default function Catalogo() {
     bid_price_from: undefined as number | undefined,
     bid_price_to: undefined as number | undefined,
     body_type: undefined as number | undefined,
+    state_code: undefined as string | undefined,
+    sort: undefined as string | undefined,
+    order: undefined as "asc" | "desc" | undefined,
+    buy_now: undefined as number | undefined,
     page: 1,
     per_page: 24,
+    ...(savedFilters || {}),
   });
 
   // Debounced search query — only fires API call 600ms after user stops typing
@@ -209,6 +245,31 @@ export default function Catalogo() {
     return list.filter((m: any) => m.name?.toLowerCase().includes(makeSearch.toLowerCase()));
   }, [manufacturers, makeSearch]);
 
+  // Persist filters to sessionStorage whenever they change
+  useEffect(() => {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters)); } catch {}
+  }, [filters]);
+
+  // Persist scroll position when leaving the page
+  useEffect(() => {
+    const handleScroll = () => {
+      try { sessionStorage.setItem(STORAGE_KEY + "_scroll", String(window.scrollY)); } catch {}
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Restore scroll position on mount (when coming back from vehicle detail)
+  useEffect(() => {
+    try {
+      const savedScroll = sessionStorage.getItem(STORAGE_KEY + "_scroll");
+      if (savedScroll && savedFilters) {
+        setTimeout(() => window.scrollTo({ top: parseInt(savedScroll), behavior: "instant" }), 100);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Use debounced search for API calls
   const debouncedFilters = useMemo(() => ({ ...filters, search_query: debouncedSearch }), [filters, debouncedSearch]);
   const searchType = detectSearchType(debouncedSearch);
@@ -216,6 +277,7 @@ export default function Catalogo() {
   const queryInput = useMemo(() => ({
     ...debouncedFilters,
     exclude_expired_auctions: 1,
+    status: 0, // 0 = active/available only, exclude sold
   }), [debouncedFilters]);
 
   const vinQuery = trpc.vehicles.searchByVin.useQuery(
@@ -269,6 +331,48 @@ export default function Catalogo() {
               <span className="text-slate-500 text-xs">Búsqueda directa activada</span>
             </div>
           )}
+
+          {/* Sort bar — always visible */}
+          <div className="mt-4 flex flex-wrap gap-2 items-center">
+            <span className="text-slate-400 text-sm">Ordenar:</span>
+            <Button
+              size="sm"
+              variant={filters.sort === "buy_now_price" && filters.order === "asc" ? "default" : "outline"}
+              className={`border-[#243048] text-xs ${filters.sort === "buy_now_price" && filters.order === "asc" ? "bg-[#00C8E0] text-[#080D18]" : "text-slate-300 hover:text-white"}`}
+              onClick={() => setFilters(f => ({ ...f, sort: "buy_now_price", order: "asc", buy_now: 1, page: 1 }))}
+            >
+              <ArrowUpDown className="w-3 h-3 mr-1" /> Buy Now: Menor a Mayor
+            </Button>
+            <Button
+              size="sm"
+              variant={filters.sort === "buy_now_price" && filters.order === "desc" ? "default" : "outline"}
+              className={`border-[#243048] text-xs ${filters.sort === "buy_now_price" && filters.order === "desc" ? "bg-[#00C8E0] text-[#080D18]" : "text-slate-300 hover:text-white"}`}
+              onClick={() => setFilters(f => ({ ...f, sort: "buy_now_price", order: "desc", buy_now: 1, page: 1 }))}
+            >
+              <ArrowUpDown className="w-3 h-3 mr-1" /> Buy Now: Mayor a Menor
+            </Button>
+            <Button
+              size="sm"
+              variant={filters.sort === "bid" && filters.order === "asc" ? "default" : "outline"}
+              className={`border-[#243048] text-xs ${filters.sort === "bid" && filters.order === "asc" ? "bg-[#F97316] text-white" : "text-slate-300 hover:text-white"}`}
+              onClick={() => setFilters(f => ({ ...f, sort: "bid", order: "asc", buy_now: undefined, page: 1 }))}
+            >
+              Precio: Menor a Mayor
+            </Button>
+            <Button
+              size="sm"
+              variant={filters.sort === "bid" && filters.order === "desc" ? "default" : "outline"}
+              className={`border-[#243048] text-xs ${filters.sort === "bid" && filters.order === "desc" ? "bg-[#F97316] text-white" : "text-slate-300 hover:text-white"}`}
+              onClick={() => setFilters(f => ({ ...f, sort: "bid", order: "desc", buy_now: undefined, page: 1 }))}
+            >
+              Precio: Mayor a Menor
+            </Button>
+            {(filters.sort || filters.buy_now) && (
+              <Button size="sm" variant="ghost" className="text-slate-500 text-xs" onClick={() => setFilters(f => ({ ...f, sort: undefined, order: undefined, buy_now: undefined, page: 1 }))}>
+                <X className="w-3 h-3 mr-1" /> Quitar orden
+              </Button>
+            )}
+          </div>
 
           {/* Filters */}
           {showFilters && (
@@ -353,7 +457,15 @@ export default function Catalogo() {
                 className="bg-[#141E30] border-[#243048] text-white placeholder:text-slate-500"
                 onChange={(e) => setFilters(f => ({ ...f, bid_price_to: e.target.value ? parseInt(e.target.value) : undefined, page: 1 }))}
               />
-              <Button onClick={() => { setFilters({ search_query: "", domain_id: undefined as number | undefined, manufacturer_id: undefined as number | undefined, model_id: undefined as number | undefined, from_year: undefined as number | undefined, to_year: undefined as number | undefined, bid_price_from: undefined as number | undefined, bid_price_to: undefined as number | undefined, body_type: undefined as number | undefined, page: 1, per_page: 24 }); setMakeSearch(""); }} variant="outline" className="border-[#243048] text-slate-400 hover:text-white col-span-2 md:col-span-1">
+              {/* Lugar de subasta (estado USA) */}
+              <Input
+                placeholder="Estado USA (ej: TX, FL)"
+                className="bg-[#141E30] border-[#243048] text-white placeholder:text-slate-500 uppercase"
+                maxLength={3}
+                defaultValue={filters.state_code || ""}
+                onChange={(e) => setFilters(f => ({ ...f, state_code: e.target.value.toUpperCase().trim() || undefined, page: 1 }))}
+              />
+              <Button onClick={() => { setFilters({ search_query: "", domain_id: undefined as number | undefined, manufacturer_id: undefined as number | undefined, model_id: undefined as number | undefined, from_year: undefined as number | undefined, to_year: undefined as number | undefined, bid_price_from: undefined as number | undefined, bid_price_to: undefined as number | undefined, body_type: undefined as number | undefined, state_code: undefined as string | undefined, sort: undefined as string | undefined, order: undefined as "asc" | "desc" | undefined, buy_now: undefined as number | undefined, page: 1, per_page: 24 }); setMakeSearch(""); try { sessionStorage.removeItem(STORAGE_KEY); } catch {} }} variant="outline" className="border-[#243048] text-slate-400 hover:text-white col-span-2 md:col-span-1">
                 <X className="w-4 h-4 mr-1" /> Limpiar Filtros
               </Button>
             </motion.div>
