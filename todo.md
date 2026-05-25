@@ -125,11 +125,11 @@
 - [x] Mostrar desglose real: Transporte USA (incluye ganancia), Shipping Marítimo (precio real Royal), fees de subasta reales
 - [x] Implementar logo nuevo de Ruta Cars GT en navbar (imagen real del logo)
 
-## Mejoras v7 - Ganancia Oculta Correcta
-- [ ] importCalculator: "Gestión Internacional Ruta Cars $500" aparece en desglose pero NO suma al total
-- [ ] importCalculator: ganancia mínima Q8,000-Q10,000 incluida en el Total Importación de forma invisible
-- [ ] VehicleDetail: actualizar display del desglose para reflejar nueva lógica
-- [ ] Home.tsx: actualizar ejemplo de cotización con nueva lógica
+## Mejoras v7 - Ganancia Oculta Correcta (superado por v9)
+- [x] importCalculator: "Gestión Internacional" aparece en desglose y SÍ suma al total (ganancia real)
+- [x] importCalculator: ganancia mínima Q10,000 incluida en Gestión Internacional (dinámica)
+- [x] VehicleDetail: display del desglose actualizado con nueva lógica
+- [x] Home.tsx: ejemplo de cotización actualizado con nueva lógica
 
 ## Mejoras v8 - Sistema Completo
 

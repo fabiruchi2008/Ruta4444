@@ -130,48 +130,73 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 function normalizeVehicle(raw: any) {
-  const lots: any[] = raw.lots || [];
+  const lots: any[] = Array.isArray(raw.lots) ? raw.lots : [];
   const firstLot = lots[0] || {};
 
-  // Find buy_now price — API uses lot.buy_now (number)
-  let buyNowPrice: number | null = null;
-  for (const lot of lots) {
-    if (lot.buy_now && Number(lot.buy_now) > 0) {
-      buyNowPrice = Number(lot.buy_now);
-      break;
-    }
-  }
-
-  const bidPrice = Number(firstLot.bid) || 0;
-  const platformId = firstLot.domain_id ?? raw.domain_id;
+  // Plataforma: lot.domain.id (objeto) o fallback
+  const platformId = firstLot.domain?.id ?? firstLot.domain_id ?? raw.domain_id;
   const platformLabel = platformId === 3 ? "Copart" : platformId === 1 ? "IAAI" : "Subasta";
   const platformColor = platformId === 3 ? "#00C8E0" : platformId === 1 ? "#F97316" : "#8B5CF6";
 
+  // Precio: buy_now y bid desde el lot
+  let buyNowPrice: number | null = null;
+  for (const lot of lots) {
+    const bn = lot.buy_now ?? lot.buy_now_price;
+    if (bn && Number(bn) > 0) { buyNowPrice = Number(bn); break; }
+  }
+  const bidPrice = Number(firstLot.bid ?? firstLot.final_bid ?? 0) || 0;
+
+  // Imágenes: lot.images.normal o small
+  const images = firstLot.images?.normal || firstLot.images?.small || [];
+  const primaryImage = (Array.isArray(images) ? images[0] : null) || raw.image_url || null;
+
+  // Ubicación: lot.location es objeto { state: { code }, city }
+  const stateCode = firstLot.location?.state?.code ?? firstLot.state_code ?? raw.state_code ?? "";
+  const location = firstLot.location?.city ?? firstLot.location ?? raw.location ?? "";
+
+  // Odómetro: lot.odometer.mi
+  const odometer = firstLot.odometer?.mi ?? firstLot.odometer_mi ?? raw.odometer ?? null;
+
+  // Daño: lot.damage.main.name
+  const damageType = firstLot.damage?.main?.name ?? firstLot.damage?.name ?? firstLot.damage ?? raw.damage_type ?? "";
+
+  // Condición: lot.condition puede ser objeto o string
+  const condition = (typeof firstLot.condition === "object" ? firstLot.condition?.name : firstLot.condition) ?? raw.condition ?? "";
+
+  // Combustible: v.fuel.name (no fuel_type)
+  const fuelType = raw.fuel?.name ?? raw.fuel_type?.name ?? raw.fuel_type ?? "";
+
+  // Lot number: firstLot.lot o lot_number
+  const lotNumber = firstLot.lot ?? firstLot.lot_number ?? raw.lot_number ?? raw.id;
+
+  // Fecha de venta
+  const saleDate = firstLot.sale_date ?? raw.sale_date ?? null;
+
   return {
     id: raw.id,
-    lotNumber: firstLot.lot_number || raw.lot_number,
-    vin: raw.vin,
-    year: raw.year,
-    make: raw.manufacturer?.name || raw.make || "",
-    model: raw.model?.name || raw.model || "",
-    bodyType: raw.body_type?.name || raw.body_type || "",
-    fuelType: raw.fuel_type?.name || raw.fuel_type || "",
-    transmission: raw.transmission?.name || raw.transmission || "",
-    condition: firstLot.condition?.name || firstLot.condition || raw.condition || "",
-    damageType: firstLot.damage?.name || firstLot.damage || raw.damage || "",
-    odometer: firstLot.odometer_mi ?? raw.odometer_mi ?? null,
-    stateCode: firstLot.state_code || raw.state_code || "",
-    location: firstLot.location || raw.location || "",
-    saleDate: firstLot.sale_date || raw.sale_date || null,
-    primaryImage: raw.images?.[0] || raw.primary_image || null,
+    lotNumber,
+    vin: raw.vin ?? "",
+    year: raw.year ?? 0,
+    make: raw.manufacturer?.name ?? (typeof raw.make === "string" ? raw.make : ""),
+    model: raw.model?.name ?? (typeof raw.model === "string" ? raw.model : ""),
+    bodyType: raw.body_type?.name ?? (typeof raw.body_type === "string" ? raw.body_type : ""),
+    fuelType,
+    transmission: raw.transmission?.name ?? (typeof raw.transmission === "string" ? raw.transmission : ""),
+    condition: typeof condition === "string" ? condition : "",
+    damageType: typeof damageType === "string" ? damageType : "",
+    odometer,
+    stateCode,
+    location: typeof location === "string" ? location : "",
+    saleDate,
+    primaryImage,
     bidPrice,
     buyNowPrice,
     platformLabel,
     platformColor,
-    cylinders: raw.cylinders || firstLot.cylinders || null,
-    engineSize: raw.engine_size || null,
-    driveWheel: raw.drive_wheel?.name || raw.drive_wheel || "",
-    color: raw.color?.name || raw.color || "",
+    cylinders: raw.cylinders ?? firstLot.cylinders ?? null,
+    engineSize: raw.engine_size ?? null,
+    driveWheel: raw.drive_wheel?.name ?? (typeof raw.drive_wheel === "string" ? raw.drive_wheel : ""),
+    color: raw.color?.name ?? (typeof raw.color === "string" ? raw.color : ""),
     keys: firstLot.keys ?? null,
   };
 }
