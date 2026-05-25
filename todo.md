@@ -91,3 +91,13 @@
 - [x] Filtro por lugar de subasta (estado USA, ej: TX, FL) - input en panel de filtros avanzados
 - [x] Persistir posición del catálogo al volver del detalle - sessionStorage + history.back()
 - [x] Excluir vehículos ya vendidos del catálogo - status: 0 en queryInput
+
+## Mejoras Catálogo v4 (Copart/IAAI/AutoBidMaster)
+- [x] Mostrar etiqueta "Buy Now" con precio cuando el vehículo tiene buy_now_price
+- [x] Mostrar etiqueta "Subasta Actual" con precio de puja cuando NO tiene buy_now_price
+- [x] Mostrar ambos precios cuando el vehículo tiene los dos
+- [x] Filtro Buy Now: mostrar SOLO vehículos con precio Buy Now disponible
+- [x] Implementar todos los filtros de Copart/IAAI: condición, tipo de daño, color, combustible, transmisión, cilindros, tracción, odómetro
+- [x] Filtro de fecha de subasta (próximas subastas)
+- [x] Verificar disponibilidad de vehículos con API (status=0, exclude_expired=1)
+- [x] Mejoras visuales de tarjetas de vehículos (badges, precios destacados)
