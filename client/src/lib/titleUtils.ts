@@ -30,7 +30,7 @@ const SALVAGE_CERTIFICATE_KEYWORDS = [
   "SALVAGE CERT",
 ];
 
-// Títulos exportables pero con trámite extra
+// Títulos exportables pero con trámite extra o pendientes
 const PROBLEMATIC_KEYWORDS = [
   "JUNK",
   "SALVAGE",
@@ -45,6 +45,8 @@ const PROBLEMATIC_KEYWORDS = [
   "ODOMETER",
   "BONDED",
   "CERTIFICATE OF TITLE BRAND",
+  // Título pendiente/ausente en Copart (Autobidmaster lo muestra en amarillo)
+  "CERTIFICATE OF TITLE",
 ];
 
 export function classifyTitle(titleType: string | null | undefined): TitleRisk {
@@ -93,7 +95,7 @@ export function getTitleBadgeProps(titleType: string | null | undefined): {
       bgClass: "bg-yellow-500/15",
       textClass: "text-yellow-400",
       borderClass: "border-yellow-500/30",
-      tooltip: "⚠️ Título con trámite extra (~$200-$500 adicionales)",
+      tooltip: "⚠️ Título con observaciones — consultar disponibilidad",
     };
   }
   return {
