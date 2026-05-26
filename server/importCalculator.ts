@@ -26,8 +26,23 @@ export type VehicleSize = "sedan" | "small_suv" | "medium_suv" | "large_suv" | "
 export type AuctionPlatform = "copart" | "iaai";
 
 // ─── Constantes de ganancia ────────────────────────────────────────────────────
-export const MIN_PROFIT_GTQ = 10000; // Ganancia mínima en quetzales
+export const MIN_PROFIT_GTQ = 10000; // Ganancia mínima base en quetzales
 export const MARKET_DISCOUNT_FACTOR = 0.87; // El cliente paga 13% menos que el mercado local
+
+/**
+ * Ganancia mínima de Ruta Cars GT según el costo total del vehículo puesto en Guatemala.
+ * El $500 decorativo (Servicio Ruta Cars GT) ya está INCLUIDO dentro de estos montos.
+ *
+ * Rangos (costo base sin ganancia, en GTQ):
+ *  - Menos de Q70,000      → Q10,000
+ *  - Q70,000 – Q149,999   → Q15,000
+ *  - Q150,000 en adelante → Q20,000
+ */
+export function getMinProfitGTQ(baseCostGTQ: number): number {
+  if (baseCostGTQ >= 150000) return 20000;
+  if (baseCostGTQ >= 70000) return 15000;
+  return 10000;
+}
 
 // ─── Fees fijos de Autobidmaster (siempre se cobran) ─────────────────────────
 export const AUTOBIDMASTER_TRANSACTION_FEE = 150; // Tarifa de Transacción
@@ -514,14 +529,19 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
   // 5. Calcular costo base de importación (sin ganancia de Ruta Cars)
   const baseCostWithoutProfit = auctionPrice + platformFees.total + AUTOBIDMASTER_FIXED_FEES + usaTransportBase + maritimeShipping;
   // Base imponible del 32%: precio subasta + fees plataforma + fees fijos Autobidmaster ($225)
-  // baseTaxWithoutProfit está en USD
   const taxBase = auctionPrice + platformFees.total + AUTOBIDMASTER_FIXED_FEES;
   const baseTaxWithoutProfit = Math.round(taxBase * 0.32); // USD
   const miscExpensesGTQ = 5000;
-  const rutaCarsServiceUSD = 500;
+  const rutaCarsServiceUSD = 500; // decorativo, NO suma al total
+  // Costo base sin ganancia en GTQ (para determinar el rango de ganancia mínima)
   const baseTotalCostGTQ = Math.round(
-    (baseCostWithoutProfit + baseTaxWithoutProfit + miscExpensesGTQ / exchangeRate + rutaCarsServiceUSD) * exchangeRate
+    (baseCostWithoutProfit + baseTaxWithoutProfit + miscExpensesGTQ / exchangeRate) * exchangeRate
   );
+
+  // Ganancia mínima según rango de precio base
+  const minProfitByRange = getMinProfitGTQ(baseTotalCostGTQ);
+  // Si el caller pasó un minProfitGTQ explícito, usar el mayor entre ambos
+  const effectiveMinProfitGTQ = Math.max(minProfitByRange, input.minProfitGTQ ?? 0);
 
   // 6. Buscar precio de mercado GT (si se proporcionaron make/model)
   let gtMarketPriceGTQ: number | undefined;
@@ -546,19 +566,19 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
 
   if (gtMarketPriceGTQ) {
     // Tenemos precio de mercado GT: usar ganancia dinámica
-    if (dynamicProfitGTQ < minProfitGTQ) {
+    if (dynamicProfitGTQ < effectiveMinProfitGTQ) {
       // Ganancia insuficiente: solicitar cotización manual
       needsManualQuote = true;
       manualQuoteReason = "low_profit";
       // Calcular con ganancia mínima de todas formas para tener los números
-      internalProfitUSD = Math.ceil(minProfitGTQ / exchangeRate);
+      internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
     } else {
       // Ganancia dinámica: diferencia entre precio objetivo y costo base
       internalProfitUSD = Math.ceil(dynamicProfitGTQ / exchangeRate);
     }
   } else {
-    // Sin datos de mercado GT: aplicar ganancia mínima de Q10,000
-    internalProfitUSD = Math.ceil(minProfitGTQ / exchangeRate);
+    // Sin datos de mercado GT: aplicar ganancia mínima según rango
+    internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
   }
 
   // 8. Calcular totales con la ganancia determinada
@@ -576,6 +596,10 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
   const finalPriceUSD = Math.round(finalPriceGTQ / exchangeRate);
   const estimatedProfitGTQ = finalPriceGTQ - baseTotalCostGTQ;
 
+  // Gestión Internacional visible = ganancia total - $500 decorativo
+  // El $500 decorativo se muestra aparte como "Servicio Ruta Cars GT"
+  const gestionVisibleUSD = Math.max(0, gestionInternacionalUSD - rutaCarsServiceUSD);
+
   // Desglose visible al cliente
   const breakdown = [
     { label: "Precio de Subasta", amountUSD: auctionPrice, amountGTQ: Math.round(auctionPrice * exchangeRate) },
@@ -584,7 +608,7 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
     { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
     { label: "Impuestos Guatemala (32%)", amountUSD: guatemalaTax, amountGTQ: Math.round(guatemalaTax * exchangeRate) },
     { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
-    { label: "Gestión Internacional", amountUSD: gestionInternacionalUSD, amountGTQ: Math.round(gestionInternacionalUSD * exchangeRate) },
+    { label: "Gestión Internacional", amountUSD: gestionVisibleUSD, amountGTQ: Math.round(gestionVisibleUSD * exchangeRate) },
     // Línea decorativa: visible al cliente pero NO suma al total
     { label: "Servicio Ruta Cars GT", amountUSD: rutaCarsServiceUSD, amountGTQ: Math.round(rutaCarsServiceUSD * exchangeRate) },
   ];
@@ -632,16 +656,26 @@ export function calculateImportCostSync(input: Omit<ImportCalculationInput, 'cit
   const usaTransportBase = FALLBACK_INLAND_RATES[stateCode.toUpperCase()] ?? 850;
   // usaTransport = precio real de grúa sin ganancia
   const usaTransport = usaTransportBase;
-  // gestionInternacional = ganancia real de Ruta Cars GT (sí suma al total)
-  const gestionInternacionalUSD = internalProfitUSD;
   const maritimeShipping = FALLBACK_OCEAN_RATES[vehicleSize.size] ?? 1100;
 
   const cifValue = auctionPrice + platformFees.total + AUTOBIDMASTER_FIXED_FEES + usaTransport + maritimeShipping;
   // Base imponible del 32%: precio subasta + fees plataforma + fees fijos Autobidmaster ($225)
-  // guatemalaTax está en USD
   const guatemalaTax = Math.round((auctionPrice + platformFees.total + AUTOBIDMASTER_FIXED_FEES) * 0.32); // USD
   const miscExpensesGTQ = 5000;
   const rutaCarsServiceUSD = 500; // decorativo, NO suma al total
+
+  // Costo base sin ganancia en GTQ (para determinar el rango de ganancia mínima)
+  const baseCostGTQ = Math.round(
+    (cifValue + guatemalaTax + miscExpensesGTQ / exchangeRate) * exchangeRate
+  );
+  // Ganancia mínima según rango de precio base
+  const minProfitByRange = getMinProfitGTQ(baseCostGTQ);
+  // Si el caller pasó un internalProfitUSD explícito, usar el mayor entre ambos
+  const minProfitUSD = Math.ceil(minProfitByRange / exchangeRate);
+  const gestionInternacionalUSD = Math.max(internalProfitUSD, minProfitUSD);
+
+  // Gestión Internacional visible = ganancia total - $500 decorativo
+  const gestionVisibleUSD = Math.max(0, gestionInternacionalUSD - rutaCarsServiceUSD);
 
   // totalCostUSD incluye Gestión Internacional pero NO el $500 decorativo
   const totalCostUSD = cifValue + guatemalaTax + miscExpensesGTQ / exchangeRate + gestionInternacionalUSD;
@@ -655,7 +689,7 @@ export function calculateImportCostSync(input: Omit<ImportCalculationInput, 'cit
     { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
     { label: "Impuestos Guatemala (32%)", amountUSD: guatemalaTax, amountGTQ: Math.round(guatemalaTax * exchangeRate) },
     { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
-    { label: "Gestión Internacional", amountUSD: gestionInternacionalUSD, amountGTQ: Math.round(gestionInternacionalUSD * exchangeRate) },
+    { label: "Gestión Internacional", amountUSD: gestionVisibleUSD, amountGTQ: Math.round(gestionVisibleUSD * exchangeRate) },
     // Línea decorativa: visible al cliente pero NO suma al total
     { label: "Servicio Ruta Cars GT", amountUSD: rutaCarsServiceUSD, amountGTQ: Math.round(rutaCarsServiceUSD * exchangeRate) },
   ];

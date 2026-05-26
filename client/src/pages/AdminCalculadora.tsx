@@ -132,7 +132,7 @@ function ResultCard({ data, ganancia, setGanancia }: {
 }
 
 // ─── Tab: Por Lote ─────────────────────────────────────────────────────────────
-function TabPorLote() {
+function TabPorLote({ isAuth }: { isAuth: boolean }) {
   const [lotInput, setLotInput] = useState("");
   const [lotQuery, setLotQuery] = useState("");
   const [calcEnabled, setCalcEnabled] = useState(false);
@@ -140,7 +140,7 @@ function TabPorLote() {
 
   const { data: lotData, isLoading: lotLoading, error: lotError } = trpc.admin.getLotForCalc.useQuery(
     { lot: lotQuery },
-    { enabled: !!lotQuery, staleTime: 60_000, retry: false }
+    { enabled: isAuth && !!lotQuery, staleTime: 60_000, retry: false }
   );
 
   const { data: calcData, isLoading: calcLoading, error: calcError } = trpc.admin.calculateReal.useQuery(
@@ -371,8 +371,17 @@ function TabManual() {
 
 // ─── Página principal ──────────────────────────────────────────────────────────
 export default function AdminCalculadora() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const [tab, setTab] = useState<"lote" | "manual">("lote");
+
+  // Mientras carga la sesión, mostrar spinner para evitar queries sin auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#080D18] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#F97316] animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated || user?.role !== "admin") {
     return (
@@ -430,7 +439,7 @@ export default function AdminCalculadora() {
           </button>
         </div>
 
-        {tab === "lote" ? <TabPorLote /> : <TabManual />}
+        {tab === "lote" ? <TabPorLote isAuth={isAuthenticated} /> : <TabManual />}
       </div>
     </div>
   );
