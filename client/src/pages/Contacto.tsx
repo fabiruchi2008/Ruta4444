@@ -48,7 +48,7 @@ export default function Contacto() {
             {[
               { icon: Phone, color: "#25D366", label: "WhatsApp", value: "+502 3122-0803", href: "https://wa.me/50231220803" },
               { icon: Mail, color: "#00C8E0", label: "Email", value: "info@rutacarsgt.com", href: "mailto:info@rutacarsgt.com" },
-              { icon: MapPin, color: "#F97316", label: "Ubicación", value: "Guatemala City, Guatemala", href: null },
+              { icon: MapPin, color: "#F97316", label: "Ubicación", value: "5ta Calle 1-44 Zona 9, Guatemala", href: null },
             ].map((item) => (
               <motion.div
                 key={item.label}

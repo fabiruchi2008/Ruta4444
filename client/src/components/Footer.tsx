@@ -118,7 +118,7 @@ export default function Footer() {
                   <div className="w-8 h-8 rounded-lg bg-[#F97316]/10 border border-[#F97316]/20 flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
                   </div>
-                  <span>Guatemala City, Guatemala</span>
+                  <span>5ta Calle 1-44 Zona 9, Guatemala</span>
                 </div>
               </li>
             </ul>
