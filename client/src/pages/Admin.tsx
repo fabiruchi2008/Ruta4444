@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
@@ -78,8 +79,11 @@ export default function Admin() {
       <div className="min-h-screen bg-[#080D18] pt-20 flex items-center justify-center">
         <div className="text-center">
           <h2 className="font-display text-3xl text-white mb-4">ACCESO RESTRINGIDO</h2>
-          <p className="text-slate-400 mb-6">Debes iniciar sesión como administrador para acceder a este panel.</p>
-          <Link href="/"><Button className="bg-[#00C8E0] text-[#080D18] font-bold">Volver al Inicio</Button></Link>
+          <p className="text-slate-400 mb-6">Debes iniciar sesión para acceder al panel de administración.</p>
+          <div className="flex gap-3 justify-center">
+            <a href={getLoginUrl()}><Button className="bg-[#00C8E0] text-[#080D18] font-bold">Iniciar Sesión</Button></a>
+            <Link href="/"><Button variant="outline" className="border-slate-600 text-slate-300">Volver al Inicio</Button></Link>
+          </div>
         </div>
       </div>
     );
