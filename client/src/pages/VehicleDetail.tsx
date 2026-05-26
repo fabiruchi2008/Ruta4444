@@ -142,6 +142,29 @@ function CalcPanel({
 
   const er = calcResult?.exchangeRate ?? 7.75;
 
+  const [marketPrice, setMarketPrice] = useState<{ gtq: number } | null>(null);
+  const [marketLoading, setMarketLoading] = useState(false);
+  const [marketError, setMarketError] = useState<string | null>(null);
+  const getMarketPrice = trpc.admin.getMarketPrice.useMutation();
+
+  const handleCalcGestion = async () => {
+    if (!make || !model || !year) return;
+    setMarketLoading(true);
+    setMarketError(null);
+    try {
+      const result = await getMarketPrice.mutateAsync({ make, model, year });
+      if (result.success && result.data) {
+        setMarketPrice({ gtq: result.data.averagePrice });
+      } else {
+        setMarketError('Sin coincidencias del mismo año. Ganancia mínima aplicada.');
+      }
+    } catch {
+      setMarketError('Error al buscar. Intenta de nuevo.');
+    } finally {
+      setMarketLoading(false);
+    }
+  };
+
   return (
     <div
       className="rounded-2xl overflow-hidden border"
@@ -204,7 +227,40 @@ function CalcPanel({
               <BreakdownRow icon={Ship} label="Flete Marítimo (Pto. Quetzal)" usd={calcResult.maritimeShipping} gtq={Math.round(calcResult.maritimeShipping * er)} />
               <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={calcResult.guatemalaTax} gtq={Math.round(calcResult.guatemalaTax * er)} />
               <BreakdownRow icon={Receipt} label="Gastos Varios (aduana, trámites)" usd={Math.round(calcResult.miscExpensesGTQ / er)} gtq={calcResult.miscExpensesGTQ} />
-              <BreakdownRow icon={CheckCircle2} label="Gestión Internacional" usd={calcResult.gestionInternacionalUSD} gtq={Math.round(calcResult.gestionInternacionalUSD * er)} accent />
+              <div className="flex items-center justify-between py-2 px-1 border-b border-[#1a2740]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: accentColor }} />
+                  <span className="text-white text-sm font-medium">Gestión Internacional</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <span className="text-white font-semibold text-sm">${calcResult.gestionInternacionalUSD.toLocaleString()}</span>
+                    <span className="text-slate-400 text-xs ml-1">Q{Math.round(calcResult.gestionInternacionalUSD * er).toLocaleString()}</span>
+                  </div>
+                  {make && model && year && (
+                    <button
+                      onClick={handleCalcGestion}
+                      disabled={marketLoading}
+                      className="ml-2 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+                      style={{ background: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}
+                      title="Buscar precio de mercado en Guatemala"
+                    >
+                      {marketLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Calcular'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {marketPrice && (
+                <div className="mx-1 mb-1 px-3 py-2 rounded-lg text-xs" style={{ background: `${accentColor}10`, border: `1px solid ${accentColor}20` }}>
+                  <span className="text-slate-400">Precio mercado GT (encuentra24): </span>
+                  <span className="font-semibold" style={{ color: accentColor }}>Q{marketPrice.gtq.toLocaleString()}</span>
+                </div>
+              )}
+              {marketError && (
+                <div className="mx-1 mb-1 px-3 py-2 rounded-lg text-xs bg-orange-500/10 border border-orange-500/20">
+                  <span className="text-orange-400">{marketError}</span>
+                </div>
+              )}
               {/* Línea decorativa: visible al cliente pero NO incluida en el total */}
               <div className="flex items-center justify-between py-1.5 px-1 opacity-50">
                 <span className="text-slate-400 text-xs">Servicio Ruta Cars GT</span>
@@ -275,6 +331,29 @@ function AuctionCalcInteractive({
   );
 
   const er = calcResult?.exchangeRate ?? 7.75;
+
+  const [marketPrice2, setMarketPrice2] = useState<{ gtq: number } | null>(null);
+  const [marketLoading2, setMarketLoading2] = useState(false);
+  const [marketError2, setMarketError2] = useState<string | null>(null);
+  const getMarketPrice2 = trpc.admin.getMarketPrice.useMutation();
+
+  const handleCalcGestion2 = async () => {
+    if (!make || !model || !year) return;
+    setMarketLoading2(true);
+    setMarketError2(null);
+    try {
+      const result = await getMarketPrice2.mutateAsync({ make, model, year });
+      if (result.success && result.data) {
+        setMarketPrice2({ gtq: result.data.averagePrice });
+      } else {
+        setMarketError2('Sin coincidencias del mismo año. Ganancia mínima aplicada.');
+      }
+    } catch {
+      setMarketError2('Error al buscar. Intenta de nuevo.');
+    } finally {
+      setMarketLoading2(false);
+    }
+  };
 
   const whatsappMsg = encodeURIComponent(
     `${decodeURIComponent(whatsappBase)} Planeo pujar $${debouncedBid.toLocaleString()}. Costo total estimado: $${calcResult?.finalPriceUSD?.toLocaleString() ?? "?"}`
@@ -360,7 +439,40 @@ function AuctionCalcInteractive({
               <BreakdownRow icon={Ship} label="Flete Marítimo (Pto. Quetzal)" usd={calcResult.maritimeShipping} gtq={Math.round(calcResult.maritimeShipping * er)} />
               <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={calcResult.guatemalaTax} gtq={Math.round(calcResult.guatemalaTax * er)} />
               <BreakdownRow icon={Receipt} label="Gastos Varios" usd={Math.round(calcResult.miscExpensesGTQ / er)} gtq={calcResult.miscExpensesGTQ} />
-              <BreakdownRow icon={CheckCircle2} label="Gestión Internacional" usd={calcResult.gestionInternacionalUSD} gtq={Math.round(calcResult.gestionInternacionalUSD * er)} accent />
+              <div className="flex items-center justify-between py-2 px-1 border-b border-[#1a2740]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-[#00C8E0]" />
+                  <span className="text-white text-sm font-medium">Gestión Internacional</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <span className="text-white font-semibold text-sm">${calcResult.gestionInternacionalUSD.toLocaleString()}</span>
+                    <span className="text-slate-400 text-xs ml-1">Q{Math.round(calcResult.gestionInternacionalUSD * er).toLocaleString()}</span>
+                  </div>
+                  {make && model && year && (
+                    <button
+                      onClick={handleCalcGestion2}
+                      disabled={marketLoading2}
+                      className="ml-2 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+                      style={{ background: '#00C8E020', color: '#00C8E0', border: '1px solid #00C8E040' }}
+                      title="Buscar precio de mercado en Guatemala"
+                    >
+                      {marketLoading2 ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Calcular'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {marketPrice2 && (
+                <div className="mx-1 mb-1 px-3 py-2 rounded-lg text-xs" style={{ background: '#00C8E010', border: '1px solid #00C8E020' }}>
+                  <span className="text-slate-400">Precio mercado GT (encuentra24): </span>
+                  <span className="font-semibold text-[#00C8E0]">Q{marketPrice2.gtq.toLocaleString()}</span>
+                </div>
+              )}
+              {marketError2 && (
+                <div className="mx-1 mb-1 px-3 py-2 rounded-lg text-xs bg-orange-500/10 border border-orange-500/20">
+                  <span className="text-orange-400">{marketError2}</span>
+                </div>
+              )}
               {/* Línea decorativa: visible al cliente pero NO incluida en el total */}
               <div className="flex items-center justify-between py-1.5 px-1 opacity-50">
                 <span className="text-slate-400 text-xs">Servicio Ruta Cars GT</span>
