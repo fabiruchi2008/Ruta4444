@@ -58,10 +58,10 @@ export default function Home() {
   // Vehículos destacados fijos — lotes reales de Copart/IAAI
   const featuredVehicles = [
     {
-      id: "39910724", lot: "39910724", year: 2013, make: "Ferrari", model: "458 Spider",
-      image: "https://cars.import-motor.com/iaai/ferrari/458/2013/39910724/ZFF68NHA6D0189693-1.webp",
-      platform: "IAAI", platformColor: "#F97316", state: "FL", odometer: 1,
-      damage: "Side", buyNowPrice: null,
+      id: "39982833", lot: "39982833", year: 2021, make: "Ferrari", model: "Roma",
+      image: "https://cars.import-motor.com/iaai/ferrari/roma/2021/39982833/ZFF98RNA7M0268041-1.webp",
+      platform: "IAAI", platformColor: "#F97316", state: "FL", odometer: 6147,
+      damage: "Normal Wear", buyNowPrice: null,
     },
     {
       id: "14979958", lot: "14979958", year: 2022, make: "Ford", model: "F-150",
