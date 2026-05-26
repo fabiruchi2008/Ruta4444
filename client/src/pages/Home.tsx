@@ -61,15 +61,19 @@ export default function Home() {
     const t = setTimeout(() => setFeaturedEnabled(true), 6000);
     return () => clearTimeout(t);
   }, []);
-  const featuredInput = useMemo(() => ({ per_page: 8, exclude_expired_auctions: 1, bid_price_to: 15000 }), []);
+  const featuredInput = useMemo(() => ({ per_page: 12, exclude_expired_auctions: 1, buy_now: 1, buy_now_price_to: 20000 }), []);
   const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput, {
     enabled: featuredEnabled,
-    staleTime: 10 * 60 * 1000,     // 10 min fresh — home page doesn't need real-time prices
+    staleTime: 10 * 60 * 1000,
     gcTime: 20 * 60 * 1000,
-    refetchOnWindowFocus: false,   // don't refetch when switching tabs
-    retry: false,                  // server handles retries internally
+    refetchOnWindowFocus: false,
+    retry: false,
   });
-  const featuredVehicles = (featuredData as any)?.data?.slice(0, 6) || [];
+  // Solo carros con precio Buy Now real > 0
+  const featuredVehicles = ((featuredData as any)?.data || [])
+    .map((raw: any) => normalizeVehicle(raw))
+    .filter((v: any) => v.buyNowPrice && v.buyNowPrice > 0)
+    .slice(0, 6);
 
   return (
     <div className="min-h-screen bg-[#080D18]">
@@ -266,8 +270,7 @@ export default function Home() {
               </motion.div>
             </motion.div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredVehicles.map((raw: any, i: number) => {
-                const v = normalizeVehicle(raw);
+              {featuredVehicles.map((v: any, i: number) => {
                 return (
                   <motion.div key={v.id || i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
                     className="bg-[#141E30] border border-[#243048] rounded-2xl overflow-hidden group hover:border-[#00C8E0]/30 transition-colors">
@@ -291,8 +294,8 @@ export default function Home() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-slate-400 text-xs">Precio subasta</p>
-                          <p className="text-[#00C8E0] font-bold text-xl">${v.bidPrice.toLocaleString()}</p>
+                          <p className="text-slate-400 text-xs">Comprar Ahora</p>
+                          <p className="text-[#22c55e] font-bold text-xl">${v.buyNowPrice?.toLocaleString()}</p>
                         </div>
                         <Link href={`/vehiculo/${v.lot || v.id}`}>
                           <Button size="sm" className="bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-bold text-xs btn-press">

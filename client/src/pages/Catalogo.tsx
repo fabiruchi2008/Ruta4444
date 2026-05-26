@@ -434,6 +434,14 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
                   <span className="font-semibold text-slate-200">{v.color}</span>
                 </div>
               )}
+              {v.saleDate && (
+                <div className="flex items-center gap-1.5 text-slate-400 col-span-2">
+                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Subasta</span>
+                  <span className="font-semibold text-orange-400">
+                    {new Date(v.saleDate).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

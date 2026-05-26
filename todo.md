@@ -171,3 +171,8 @@
 - [x] Tabla quote_pdfs en DB: guardar historial de cotizaciones generadas (lote, cliente, precio, fecha)
 - [x] Endpoint admin.saveQuotePdf y admin.getQuotePdfs
 - [x] Historial de cotizaciones PDF en página /admin/factura (tabla con folio, vehículo, cliente, precio acordado, costo real, fecha)
+
+## Mejoras Catálogo v10
+
+- [x] Fecha de subasta visible en tarjetas del catálogo (naranja, col-span-2)
+- [x] Sección recomendados Home: carros Buy Now con precio real (filtro buy_now=1, precio verde)
