@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   Calculator, DollarSign, TrendingDown, ArrowLeft, Loader2,
-  AlertTriangle, Search, Hash, SlidersHorizontal, Car, MapPin,
-  CheckCircle2, RefreshCw,
+  AlertTriangle, Search, Hash, Car, MapPin,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,26 +20,55 @@ const US_STATES = [
 ];
 
 const BODY_TYPES = [
-  { value: "sedan", label: "Sedán" },
+  { value: "sedan", label: "Sedan" },
   { value: "suv", label: "SUV mediano" },
   { value: "large_suv", label: "SUV grande (Tahoe, Expedition)" },
   { value: "pickup", label: "Pickup / Camioneta" },
   { value: "van", label: "Van / Minivan" },
-  { value: "coupe", label: "Coupé / Hatchback" },
+  { value: "coupe", label: "Coupe / Hatchback" },
 ];
 
 const fmt = (n: number) =>
   n.toLocaleString("es-GT", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 // ─── Componente de resultado compartido ───────────────────────────────────────
-function ResultCard({ data, ganancia, setGanancia }: {
+function ResultCard({
+  data, ganancia, setGanancia, make, model, year,
+}: {
   data: any;
   ganancia: string;
   setGanancia: (v: string) => void;
+  make?: string;
+  model?: string;
+  year?: number | null;
 }) {
   const gananciaN = parseFloat(ganancia) || 0;
   const precioCliente = data.finalPriceUSD + gananciaN;
   const precioClienteGTQ = Math.round(precioCliente * data.exchangeRate);
+
+  const [marketResult, setMarketResult] = useState<any>(null);
+  const [marketMsg, setMarketMsg] = useState<string>("");
+
+  const getMarketPrice = trpc.admin.getMarketPrice.useMutation({
+    onSuccess: (res) => {
+      if (res.success && res.data) {
+        setMarketResult(res.data);
+        setMarketMsg(res.message ?? "");
+        // Sugerir ganancia: precio mediano GT menos costo real
+        const costoUSD = data.finalPriceUSD;
+        const precioMercadoUSD = res.data.medianPriceUSD;
+        const gananciaSugerida = Math.max(0, precioMercadoUSD - costoUSD);
+        if (gananciaSugerida > 0) setGanancia(String(Math.round(gananciaSugerida)));
+      } else {
+        setMarketResult(null);
+        setMarketMsg(res.message ?? "Sin resultados — se aplica ganancia minima Q10,000");
+      }
+    },
+    onError: (e) => {
+      setMarketResult(null);
+      setMarketMsg("Error: " + e.message);
+    },
+  });
 
   return (
     <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl overflow-hidden mt-6">
@@ -47,7 +76,7 @@ function ResultCard({ data, ganancia, setGanancia }: {
       <div className="bg-[#F97316]/10 border-b border-[#F97316]/20 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingDown className="w-5 h-5 text-[#F97316]" />
-          <span className="font-bold text-white">Costo Real de Importación</span>
+          <span className="font-bold text-white">Costo Real de Importacion</span>
           <span className="text-xs text-[#F97316] font-medium">(sin ganancia)</span>
         </div>
         <div className="text-right">
@@ -76,6 +105,71 @@ function ResultCard({ data, ganancia, setGanancia }: {
           </div>
         </div>
       </div>
+
+      {/* Buscar precio de mercado GT */}
+      {make && model && (
+        <div className="px-6 py-4 bg-[#00C8E0]/5 border-t border-[#00C8E0]/10">
+          <p className="text-[#00C8E0] text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Search className="w-3.5 h-3.5" /> Precio de Mercado GT (encuentra24)
+          </p>
+          <Button
+            onClick={() => {
+              setMarketResult(null);
+              setMarketMsg("");
+              getMarketPrice.mutate({
+                make,
+                model,
+                year: year ?? null,
+                exchangeRate: data.exchangeRate,
+              });
+            }}
+            disabled={getMarketPrice.isPending}
+            className="w-full bg-[#00C8E0] hover:bg-[#00C8E0]/90 text-[#080D18] font-bold py-4"
+          >
+            {getMarketPrice.isPending
+              ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Buscando en encuentra24... (20-30 seg)</>
+              : <><Search className="w-4 h-4 mr-2" /> Calcular Gestion Internacional</>}
+          </Button>
+          {marketMsg && !getMarketPrice.isPending && (
+            <div className={`mt-3 p-3 rounded-xl text-sm ${
+              marketResult
+                ? "bg-[#00C8E0]/10 border border-[#00C8E0]/20 text-[#00C8E0]"
+                : "bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
+            }`}>
+              {marketResult ? (
+                <>
+                  <p className="font-semibold mb-2">{marketMsg}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400">Precio mediano GT: </span>
+                      <span className="font-bold">${fmt(marketResult.medianPriceUSD)} / Q{fmt(marketResult.medianPrice)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Precio promedio GT: </span>
+                      <span className="font-bold">${fmt(marketResult.averagePriceUSD)} / Q{fmt(marketResult.averagePrice)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Muestra: </span>
+                      <span className="font-bold">{marketResult.sampleSize} anuncios</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Anio coincide: </span>
+                      <span className="font-bold">{marketResult.yearMatched ? "Si" : "No"}</span>
+                    </div>
+                  </div>
+                  {gananciaN > 0 && (
+                    <p className="mt-2 text-emerald-400 font-bold text-xs">
+                      Ganancia sugerida aplicada: ${fmt(gananciaN)} USD / Q{fmt(Math.round(gananciaN * data.exchangeRate))} GTQ
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p>{marketMsg}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Calculadora de ganancia */}
       <div className="px-6 py-4 bg-emerald-500/5 border-t border-emerald-500/10">
@@ -106,7 +200,9 @@ function ResultCard({ data, ganancia, setGanancia }: {
             </div>
             <div className="flex justify-between items-center mt-1.5 pt-1.5 border-t border-emerald-500/20">
               <span className="text-slate-400 text-xs">Tu ganancia</span>
-              <span className="text-emerald-400 font-bold text-sm">${fmt(gananciaN)} USD / Q{fmt(Math.round(gananciaN * data.exchangeRate))} GTQ</span>
+              <span className="text-emerald-400 font-bold text-sm">
+                ${fmt(gananciaN)} USD / Q{fmt(Math.round(gananciaN * data.exchangeRate))} GTQ
+              </span>
             </div>
           </div>
         )}
@@ -115,7 +211,7 @@ function ResultCard({ data, ganancia, setGanancia }: {
       {/* Info adicional */}
       <div className="bg-[#141E30] border-t border-[#1F2D45] px-6 py-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
         <div>
-          <p className="text-slate-500 text-xs mb-1">Tamaño detectado</p>
+          <p className="text-slate-500 text-xs mb-1">Tamano detectado</p>
           <p className="text-white font-medium">{data.vehicleSize?.label ?? "—"}</p>
         </div>
         <div>
@@ -123,7 +219,7 @@ function ResultCard({ data, ganancia, setGanancia }: {
           <p className="text-white font-medium">Q{data.exchangeRate?.toFixed(2)} / $1</p>
         </div>
         <div>
-          <p className="text-slate-500 text-xs mb-1">Fuente tarifa grúa</p>
+          <p className="text-slate-500 text-xs mb-1">Fuente tarifa grua</p>
           <p className="text-white font-medium capitalize">{data.inlandRateSource ?? "fallback"}</p>
         </div>
       </div>
@@ -171,12 +267,12 @@ function TabPorLote() {
   return (
     <div className="space-y-5">
       <p className="text-slate-400 text-sm">
-        Ingresá el número de lote de <strong className="text-white">Copart o IAAI</strong> y el sistema carga los datos automáticamente.
+        Ingresa el numero de lote de <strong className="text-white">Copart o IAAI</strong> y el sistema carga los datos automaticamente.
       </p>
 
-      {/* Búsqueda por lote */}
+      {/* Busqueda por lote */}
       <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-6">
-        <Label className="text-slate-300 text-sm mb-2 block">Número de Lote</Label>
+        <Label className="text-slate-300 text-sm mb-2 block">Numero de Lote</Label>
         <div className="flex gap-3">
           <div className="relative flex-1">
             <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -252,7 +348,14 @@ function TabPorLote() {
       )}
 
       {calcData && !calcLoading && (
-        <ResultCard data={calcData} ganancia={ganancia} setGanancia={setGanancia} />
+        <ResultCard
+          data={calcData}
+          ganancia={ganancia}
+          setGanancia={setGanancia}
+          make={lotData?.make ?? undefined}
+          model={lotData?.model ?? undefined}
+          year={lotData?.year ?? null}
+        />
       )}
     </div>
   );
@@ -266,6 +369,9 @@ function TabManual() {
   const [bodyType, setBodyType] = useState("sedan");
   const [enabled, setEnabled] = useState(false);
   const [ganancia, setGanancia] = useState("");
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
 
   const { data, isLoading, error } = trpc.admin.calculateReal.useQuery(
     { auctionPrice: parseFloat(auctionPrice) || 0, platform, stateCode, bodyType },
@@ -280,7 +386,7 @@ function TabManual() {
   return (
     <div className="space-y-5">
       <p className="text-slate-400 text-sm">
-        Ingresá los datos manualmente para calcular el costo real de importación.
+        Ingresa los datos manualmente para calcular el costo real de importacion.
       </p>
 
       <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-6 space-y-5">
@@ -331,7 +437,7 @@ function TabManual() {
 
           {/* Tipo */}
           <div>
-            <Label className="text-slate-300 text-sm mb-1.5 block">Tipo de Vehículo</Label>
+            <Label className="text-slate-300 text-sm mb-1.5 block">Tipo de Vehiculo</Label>
             <Select value={bodyType} onValueChange={v => { setBodyType(v); setEnabled(false); }}>
               <SelectTrigger className="bg-[#141E30] border-[#243048] text-white">
                 <SelectValue />
@@ -342,6 +448,48 @@ function TabManual() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Marca (opcional para scraping) */}
+          <div>
+            <Label className="text-slate-300 text-sm mb-1.5 block">
+              Marca <span className="text-slate-500 font-normal">(opcional, para buscar precio GT)</span>
+            </Label>
+            <Input
+              type="text"
+              placeholder="Ej: Dodge"
+              value={make}
+              onChange={e => setMake(e.target.value)}
+              className="bg-[#141E30] border-[#243048] text-white"
+            />
+          </div>
+
+          {/* Modelo (opcional para scraping) */}
+          <div>
+            <Label className="text-slate-300 text-sm mb-1.5 block">
+              Modelo <span className="text-slate-500 font-normal">(opcional, para buscar precio GT)</span>
+            </Label>
+            <Input
+              type="text"
+              placeholder="Ej: Caravan"
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              className="bg-[#141E30] border-[#243048] text-white"
+            />
+          </div>
+
+          {/* Anio (opcional para scraping) */}
+          <div>
+            <Label className="text-slate-300 text-sm mb-1.5 block">
+              Anio <span className="text-slate-500 font-normal">(opcional, para filtrar precio GT)</span>
+            </Label>
+            <Input
+              type="number"
+              placeholder="Ej: 2018"
+              value={year}
+              onChange={e => setYear(e.target.value)}
+              className="bg-[#141E30] border-[#243048] text-white"
+            />
           </div>
         </div>
 
@@ -363,13 +511,20 @@ function TabManual() {
       )}
 
       {data && !isLoading && (
-        <ResultCard data={data} ganancia={ganancia} setGanancia={setGanancia} />
+        <ResultCard
+          data={data}
+          ganancia={ganancia}
+          setGanancia={setGanancia}
+          make={make || undefined}
+          model={model || undefined}
+          year={year ? parseInt(year) : null}
+        />
       )}
     </div>
   );
 }
 
-// ─── Página principal ──────────────────────────────────────────────────────────
+// ─── Pagina principal ──────────────────────────────────────────────────────────
 export default function AdminCalculadora() {
   const { user, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<"lote" | "manual">("lote");
@@ -380,7 +535,7 @@ export default function AdminCalculadora() {
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-[#F97316] mx-auto mb-4" />
           <p className="text-white text-xl font-bold">Acceso restringido</p>
-          <p className="text-slate-400 mt-2">Solo administradores pueden ver esta página.</p>
+          <p className="text-slate-400 mt-2">Solo administradores pueden ver esta pagina.</p>
           <Link href="/admin">
             <Button className="mt-6 bg-[#00C8E0] text-[#080D18] font-bold">Volver al Admin</Button>
           </Link>
@@ -416,7 +571,7 @@ export default function AdminCalculadora() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            <Hash className="w-4 h-4" /> Por Número de Lote
+            <Hash className="w-4 h-4" /> Por Numero de Lote
           </button>
           <button
             onClick={() => setTab("manual")}
@@ -426,7 +581,7 @@ export default function AdminCalculadora() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            <SlidersHorizontal className="w-4 h-4" /> Manual
+            <Calculator className="w-4 h-4" /> Manual
           </button>
         </div>
 

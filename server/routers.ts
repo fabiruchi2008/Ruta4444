@@ -22,6 +22,7 @@ import {
   getGtMarketPrice,
 } from "./importCalculator";
 import { getDb } from "./db";
+import { scrapeMarketPrice } from "./marketScraper";
 import { quotes, contacts, settings, featuredVehicles, quotePdfs } from "../drizzle/schema";
 import { eq, desc, asc } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
@@ -592,6 +593,31 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
           finalPriceUSD: Math.round(realCostUSD),
           finalPriceGTQ: realCostGTQ,
           breakdown: result.breakdown.filter(b => b.label !== "Gestión Internacional" && b.label !== "Servicio Ruta Cars GT"),
+        };
+      }),
+
+    getMarketPrice: adminProcedure
+      .input(z.object({
+        make: z.string(),
+        model: z.string(),
+        year: z.number().nullable().optional(),
+        exchangeRate: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const exchangeRate = input.exchangeRate ?? parseFloat(await getSetting("exchange_rate", "7.75"));
+        const result = await scrapeMarketPrice(input.make, input.model, input.year);
+        if (!result) {
+          return { success: false, message: "No se encontraron precios en encuentra24.com para este veh\u00edculo", data: null };
+        }
+        return {
+          success: true,
+          message: `Se encontraron ${result.sampleSize} listados en encuentra24.com`,
+          data: {
+            ...result,
+            averagePriceUSD: Math.round(result.averagePrice / exchangeRate),
+            medianPriceUSD: Math.round(result.medianPrice / exchangeRate),
+            exchangeRate,
+          },
         };
       }),
   }),
