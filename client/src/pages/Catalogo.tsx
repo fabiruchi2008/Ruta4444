@@ -684,10 +684,11 @@ export default function Catalogo() {
   );
   const generalQuery = trpc.vehicles.search.useQuery(queryInput, {
     enabled: catalogReady && searchType === "general",
-    staleTime: 3 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchInterval: 10 * 60 * 1000,
+    staleTime: 8 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchInterval: false,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
     retry: false,
   });
 
