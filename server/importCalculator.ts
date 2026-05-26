@@ -565,21 +565,42 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
   let needsManualQuote = false;
   let manualQuoteReason: "special_vehicle" | "low_profit" | undefined;
 
-  if (gtMarketPriceGTQ) {
-    // Tenemos precio de mercado GT: usar ganancia dinámica
-    if (dynamicProfitGTQ < effectiveMinProfitGTQ) {
-      // Ganancia insuficiente: solicitar cotización manual
-      needsManualQuote = true;
-      manualQuoteReason = "low_profit";
-      // Calcular con ganancia mínima de todas formas para tener los números
-      internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
+  // Lógica de ganancia según costo base y precio de mercado GT:
+  //
+  // Costo base < Q60,000:
+  //   - Si mercado GT supera costo base → ganancia dinámica (mínimo Q5,000)
+  //   - Si mercado GT NO supera o no hay datos → Q10,000 fijo
+  //
+  // Costo base ≥ Q60,000:
+  //   - Si mercado GT supera costo base → ganancia dinámica automática
+  //   - Si mercado GT NO supera costo base → Q10,000 fijo
+  //   - Si no hay datos de mercado GT → rangos normales (Q10k/Q15k/Q20k)
+
+  const SMALL_CAR_THRESHOLD_GTQ = 60000;
+  const SMALL_CAR_MIN_PROFIT_GTQ = 5000;  // mínimo para carros baratos con mercado favorable
+  const FALLBACK_MIN_PROFIT_GTQ = 10000;  // cuando mercado GT no supera o no hay datos
+
+  if (baseTotalCostGTQ < SMALL_CAR_THRESHOLD_GTQ) {
+    // Vehículo barato (< Q60,000)
+    if (gtMarketPriceGTQ && dynamicProfitGTQ >= SMALL_CAR_MIN_PROFIT_GTQ) {
+      // Mercado GT supera el costo base con al menos Q5,000 de ganancia
+      internalProfitUSD = Math.ceil(Math.max(dynamicProfitGTQ, SMALL_CAR_MIN_PROFIT_GTQ) / exchangeRate);
     } else {
-      // Ganancia dinámica: diferencia entre precio objetivo y costo base
-      internalProfitUSD = Math.ceil(dynamicProfitGTQ / exchangeRate);
+      // No hay datos de mercado GT o no supera el costo base → Q10,000 fijo
+      internalProfitUSD = Math.ceil(FALLBACK_MIN_PROFIT_GTQ / exchangeRate);
     }
   } else {
-    // Sin datos de mercado GT: aplicar ganancia mínima según rango
-    internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
+    // Vehículo de Q60,000 en adelante
+    if (gtMarketPriceGTQ && dynamicProfitGTQ > 0) {
+      // Mercado GT supera el costo base → ganancia dinámica automática
+      internalProfitUSD = Math.ceil(Math.max(dynamicProfitGTQ, effectiveMinProfitGTQ) / exchangeRate);
+    } else if (gtMarketPriceGTQ && dynamicProfitGTQ <= 0) {
+      // Mercado GT NO supera el costo base → Q10,000 fijo
+      internalProfitUSD = Math.ceil(FALLBACK_MIN_PROFIT_GTQ / exchangeRate);
+    } else {
+      // Sin datos de mercado GT → rangos normales (Q10k/Q15k/Q20k)
+      internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
+    }
   }
 
   // 8. Calcular totales con la ganancia determinada
