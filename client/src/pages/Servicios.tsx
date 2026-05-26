@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import SEOHead from "@/components/SEOHead";
-import { CheckCircle, Clock, FileText, Ship, Car, Wrench, ArrowRight, MessageCircle } from "lucide-react";
+import { CheckCircle, FileText, Ship, Car, Wrench, ArrowRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const fadeUp = {
@@ -73,11 +73,7 @@ export default function Servicios() {
                   <span className="font-display text-4xl leading-none" style={{ color: `${step.color}30` }}>{step.num}</span>
                 </div>
                 <h3 className="font-semibold text-white text-lg mb-2">{step.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-4">{step.desc}</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <Clock className="w-3.5 h-3.5" style={{ color: step.color }} />
-                  <span style={{ color: step.color }}>Tiempo estimado: {step.time}</span>
-                </div>
+                <p className="text-slate-400 text-sm leading-relaxed">{step.desc}</p>
               </motion.div>
             ))}
           </div>
