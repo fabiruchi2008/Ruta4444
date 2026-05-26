@@ -539,6 +539,27 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
     }),
 
     // Calculadora de costo real (sin ganancia) — solo para admin
+    getLotForCalc: adminProcedure
+      .input(z.object({ lot: z.string().min(3) }))
+      .query(async ({ input }) => {
+        const result = await searchByLot(input.lot);
+        if (!result?.data) throw new TRPCError({ code: "NOT_FOUND", message: "Lote no encontrado" });
+        const v = result.data;
+        const primaryLot = v.lots?.[0];
+        const cityRaw = primaryLot?.location?.city as any;
+        const city = cityRaw?.name ?? cityRaw ?? null;
+        const stateCode = (primaryLot?.location?.state as any)?.code ?? primaryLot?.location?.state ?? "";
+        const platform = (primaryLot?.domain?.id === 1 || primaryLot?.domain?.name?.includes("iaai")) ? "iaai" : "copart";
+        const auctionPrice = primaryLot?.buy_now ?? primaryLot?.bid ?? primaryLot?.final_bid ?? 0;
+        const bodyType = v.body_type?.name ?? null;
+        const make = v.manufacturer?.name ?? "";
+        const model = v.model?.name ?? "";
+        const year = v.year ?? null;
+        const image = primaryLot?.images?.normal?.[0] ?? primaryLot?.images?.small?.[0] ?? null;
+        const title = [year, make, model].filter(Boolean).join(" ");
+        return { lot: input.lot, make, model, year, bodyType, stateCode, city, platform, auctionPrice, image, title };
+      }),
+
     calculateReal: adminProcedure
       .input(z.object({
         auctionPrice: z.number(),

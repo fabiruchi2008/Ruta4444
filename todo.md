@@ -176,3 +176,12 @@
 
 - [x] Fecha de subasta visible en tarjetas del catálogo (naranja, col-span-2)
 - [x] Sección recomendados Home: carros Buy Now con precio real (filtro buy_now=1, precio verde)
+
+## Correcciones Calculadora v11
+
+- [x] Fees Autobidmaster ($150 transacción + $50 documentación + $25 transferencia) añadidos al CIF y base imponible del 32%
+- [x] Base imponible 32%: precio subasta + fees Copart/IAAI + fees Autobidmaster $225 (sin transporte ni flete)
+- [x] Ganancia mínima Q10,000 para todos los vehículos sin precio de mercado GT
+- [x] Calculadora interna admin: tab "Por Número de Lote" (carga datos automáticos) + tab "Manual"
+- [x] Simulador de ganancia en calculadora admin (campo para ingresar ganancia y ver precio al cliente)
+- [x] Endpoint admin.getLotForCalc: busca lote en AuctionsAPI y retorna datos para calculadora
