@@ -303,18 +303,20 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
   const conditionLabel = tES(CONDITION_ES, v.condition);
   const damageLabel = tES(DAMAGE_ES, v.damageType);
 
-  const vehicleLink = `https://rutacarsgt.com/vehiculo/${v.lotNumber || v.id}`;
+  // Usar VIN como identificador si está disponible (es único por vehículo y evita confusión de lotes)
+  const vehicleSlug = v.vin || v.lotNumber || v.id;
+  const vehicleLink = `https://rutacarsgt.com/vehiculo/${vehicleSlug}`;
   const whatsappBuyNow = encodeURIComponent(
-    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber}) a $${v.buyNowPrice?.toLocaleString()} en ${v.platformLabel}. ¿Cómo procedo?\n🔗 ${vehicleLink}`
+    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber}) a $${v.buyNowPrice?.toLocaleString()} en ${v.platformLabel}. \u00bfC\u00f3mo procedo?\n\ud83d\udd17 ${vehicleLink}`
   );
   const whatsappAuction = encodeURIComponent(
-    `Hola Ruta Cars GT, me interesa el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber || v.id}) en ${v.platformLabel}\n🔗 ${vehicleLink}`
+    `Hola Ruta Cars GT, me interesa el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber || v.id}) en ${v.platformLabel}\n\ud83d\udd17 ${vehicleLink}`
   );
 
   return (
     <div className="relative bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden hover:border-[#00C8E0]/30 transition-colors duration-150 group">
       {/* Clickable overlay — whole card goes to vehicle detail, except interactive buttons */}
-      <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="absolute inset-0 z-0" aria-label={`Ver ${v.year} ${v.make} ${v.model}`} />
+      <Link href={`/vehiculo/${vehicleSlug}`} className="absolute inset-0 z-0" aria-label={`Ver ${v.year} ${v.make} ${v.model}`} />
       <div className="relative z-10 flex flex-col sm:flex-row pointer-events-none">
         {/* ── Image ── */}
           <div className="relative sm:w-52 lg:w-60 flex-shrink-0 bg-[#0B1120] overflow-hidden">
@@ -533,17 +535,17 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
                       <Zap className="w-3 h-3" /> Comprar Ahora
                     </button>
                   </a>
-                  <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="block">
-                    <button className="w-full py-2 px-3 rounded-lg bg-[#1F2D45] hover:bg-[#243048] text-slate-300 hover:text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 border border-[#243048]">
-                      <Calculator className="w-3 h-3" /> Ver Costos
+                  <Link href={`/vehiculo/${vehicleSlug}`} className="block">
+                     <button className="w-full py-2 px-3 rounded-lg bg-[#1F2D45] hover:bg-[#243048] text-slate-300 hover:text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 border border-[#243048]">
+                       <Calculator className="w-3 h-3" /> Ver Costos
                     </button>
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="block">
-                    <button className="w-full py-2 px-3 rounded-lg bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
-                      <Calculator className="w-3 h-3" /> Ver Costos
+                  <Link href={`/vehiculo/${vehicleSlug}`} className="block">
+                     <button className="w-full py-2 px-3 rounded-lg bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                       <Calculator className="w-3 h-3" /> Ver Costos
                     </button>
                   </Link>
                   <a
