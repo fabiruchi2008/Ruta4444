@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import SEOHead from "@/components/SEOHead";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, X, Car, Fuel, Gauge, Calendar, MapPin,
@@ -636,13 +637,13 @@ export default function Catalogo() {
 
   const [catalogReady, setCatalogReady] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setCatalogReady(true), 800);
+    const t = setTimeout(() => setCatalogReady(true), 300);
     return () => clearTimeout(t);
   }, []);
 
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search_query);
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(filters.search_query), 600);
+    const t = setTimeout(() => setDebouncedSearch(filters.search_query), 300);
     return () => clearTimeout(t);
   }, [filters.search_query]);
 
@@ -653,8 +654,8 @@ export default function Catalogo() {
   const [manufacturersEnabled, setManufacturersEnabled] = useState(false);
   const [damagesEnabled, setDamagesEnabled] = useState(false);
   useEffect(() => {
-    const t1 = setTimeout(() => setManufacturersEnabled(true), 1500);
-    const t2 = setTimeout(() => setDamagesEnabled(true), 3500);
+    const t1 = setTimeout(() => setManufacturersEnabled(true), 400);
+    const t2 = setTimeout(() => setDamagesEnabled(true), 800);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
@@ -710,8 +711,9 @@ export default function Catalogo() {
   );
   const generalQuery = trpc.vehicles.search.useQuery(queryInput, {
     enabled: catalogReady && searchType === "general",
-    staleTime: 8 * 60 * 1000,
-    gcTime: 20 * 60 * 1000,
+    staleTime: 25 * 60 * 1000,  // 25 min en cliente (cache servidor es 30 min)
+    gcTime: 60 * 60 * 1000,     // mantener en memoria 1 hora
+    placeholderData: (prev: any) => prev,  // mantener datos anteriores mientras carga nuevo filtro
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -719,6 +721,7 @@ export default function Catalogo() {
   });
 
   const isLoading = searchType === "vin" ? vinQuery.isLoading : searchType === "lot" ? lotQuery.isLoading : generalQuery.isLoading;
+  const isFetching = searchType === "general" ? generalQuery.isFetching : false;
   const error = searchType === "vin" ? vinQuery.error : searchType === "lot" ? lotQuery.error : generalQuery.error;
   const rawData = searchType === "vin" ? vinQuery.data : searchType === "lot" ? lotQuery.data : generalQuery.data;
   // searchByLot devuelve { data: AuctionVehicle } (objeto único), no un array
@@ -1066,7 +1069,19 @@ export default function Catalogo() {
   );
 
   return (
+    <>
+    <SEOHead
+      title="Catálogo de Vehículos en Subasta"
+      description="Explora miles de vehículos de Copart e IAAI disponibles para importar a Guatemala. Filtra por marca, precio, estado y más."
+      url="/catalogo"
+    />
     <div className="min-h-screen bg-[#080D18] pt-20">
+      {/* Barra de progreso sutil cuando actualiza filtros */}
+      {isFetching && !isLoading && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-[#080D18] overflow-hidden">
+          <div className="h-full bg-[#00C8E0] animate-pulse" style={{ width: '60%', animation: 'progress-bar 1.2s ease-in-out infinite' }} />
+        </div>
+      )}
       {/* ── Page header ── */}
       <div className="bg-[#0B1120] border-b border-[#1F2D45]/60">
         <div className="container py-5">
@@ -1316,5 +1331,6 @@ export default function Catalogo() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

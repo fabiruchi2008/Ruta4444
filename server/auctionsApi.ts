@@ -45,7 +45,7 @@ const inFlight = new Map<string, Promise<unknown>>();
 // ─── True serial request queue ────────────────────────────────────────────────
 // Only ONE request is active at a time. The next request starts only AFTER
 // the previous fetch fully completes (response received). Min 2.5s between calls.
-const MIN_GAP_MS = 2500;
+const MIN_GAP_MS = 1200;  // 1.2s entre llamadas (era 2.5s)
 let lastCallTime = 0;
 let queuePromise: Promise<void> = Promise.resolve();
 
@@ -285,7 +285,7 @@ export interface SearchCarsParams {
 }
 
 // ─── TTL constants ────────────────────────────────────────────────────────────
-const CACHE_15MIN = 15 * 60 * 1000;
+const CACHE_15MIN = 30 * 60 * 1000;  // 30 min (era 15)
 const CACHE_1HOUR = 60 * 60 * 1000;
 
 // ─── API functions ─────────────────────────────────────────────────────────────

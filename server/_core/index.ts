@@ -39,6 +39,36 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  // SEO: sitemap.xml
+  app.get("/sitemap.xml", (_req, res) => {
+    const BASE = "https://rutacarsgt.com";
+    const pages = [
+      { url: "/", priority: "1.0", changefreq: "daily" },
+      { url: "/catalogo", priority: "0.9", changefreq: "hourly" },
+      { url: "/servicios", priority: "0.7", changefreq: "monthly" },
+      { url: "/contacto", priority: "0.6", changefreq: "monthly" },
+      { url: "/seguimiento", priority: "0.5", changefreq: "monthly" },
+    ];
+    const today = new Date().toISOString().split("T")[0];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${pages.map(p => `  <url>
+    <loc>${BASE}${p.url}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`).join("\n")}
+</urlset>`;
+    res.setHeader("Content-Type", "application/xml");
+    res.send(xml);
+  });
+
+  // SEO: robots.txt
+  app.get("/robots.txt", (_req, res) => {
+    res.setHeader("Content-Type", "text/plain");
+    res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: https://rutacarsgt.com/sitemap.xml`);
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

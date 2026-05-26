@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import SEOHead from "@/components/SEOHead";
 import { CheckCircle, Clock, FileText, Ship, Car, Wrench, ArrowRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -30,6 +31,12 @@ const included = [
 
 export default function Servicios() {
   return (
+    <>
+    <SEOHead
+      title="Servicios de Importación de Vehículos"
+      description="Conoce nuestro proceso completo de importación de vehículos de USA a Guatemala. Desde la subasta hasta la entrega en tu puerta. Copart, IAAI, AutoBid Master."
+      url="/servicios"
+    />
     <div className="min-h-screen bg-[#080D18] pt-20">
       {/* Header */}
       <div className="bg-[#0F1624] border-b border-[#243048]/40 py-12">
@@ -124,5 +131,6 @@ export default function Servicios() {
         </div>
       </section>
     </div>
+    </>
   );
 }

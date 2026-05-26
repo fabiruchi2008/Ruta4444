@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SEOHead from "@/components/SEOHead";
 import { motion } from "framer-motion";
 import { Phone, Mail, MapPin, MessageCircle, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,12 @@ export default function Contacto() {
   }
 
   return (
+    <>
+    <SEOHead
+      title="Contacto - Importa tu Vehículo"
+      description="Contáctanos para importar tu vehículo de subastas americanas a Guatemala. Asesoría personalizada por WhatsApp, teléfono o formulario."
+      url="/contacto"
+    />
     <div className="min-h-screen bg-[#080D18] pt-20">
       <div className="bg-[#0F1624] border-b border-[#243048]/40 py-12">
         <div className="container text-center">
@@ -121,5 +128,6 @@ export default function Contacto() {
         </div>
       </div>
     </div>
+    </>
   );
 }

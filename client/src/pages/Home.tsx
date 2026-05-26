@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import SEOHead from "@/components/SEOHead";
 import { ArrowRight, Car, Calculator, TrendingUp, Shield, Clock, CheckCircle, ChevronRight, Zap, Gauge, Fuel, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -96,6 +97,12 @@ export default function Home() {
   ];
 
   return (
+    <>
+    <SEOHead
+      title="Importa tu Vehículo de USA a Guatemala"
+      description="Importa carros de subastas Copart e IAAI a Guatemala con cotización automática, calculadora de costos y asesoría personalizada. Ruta Cars GT."
+      url="/"
+    />
     <div className="min-h-screen bg-[#080D18]">
       {/* HERO */}
       <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
@@ -363,5 +370,6 @@ export default function Home() {
         </div>
       </section>
     </div>
+    </>
   );
 }
