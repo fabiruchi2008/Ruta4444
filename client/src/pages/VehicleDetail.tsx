@@ -202,7 +202,7 @@ function CalcPanel({
               <BreakdownRow icon={Receipt} label={`Fees ${platform === "copart" ? "Copart" : "IAAI"}`} usd={calcResult.platformFees.total} gtq={Math.round(calcResult.platformFees.total * er)} />
               <BreakdownRow icon={Truck} label={`Transporte USA (${calcResult.vehicleSize.label})`} usd={calcResult.usaTransport} gtq={Math.round(calcResult.usaTransport * er)} />
               <BreakdownRow icon={Ship} label="Flete Marítimo (Pto. Quetzal)" usd={calcResult.maritimeShipping} gtq={Math.round(calcResult.maritimeShipping * er)} />
-              <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={Math.round(calcResult.guatemalaTax / er)} gtq={calcResult.guatemalaTax} />
+              <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={calcResult.guatemalaTax} gtq={Math.round(calcResult.guatemalaTax * er)} />
               <BreakdownRow icon={Receipt} label="Gastos Varios (aduana, trámites)" usd={Math.round(calcResult.miscExpensesGTQ / er)} gtq={calcResult.miscExpensesGTQ} />
               <BreakdownRow icon={CheckCircle2} label="Gestión Internacional" usd={calcResult.gestionInternacionalUSD} gtq={Math.round(calcResult.gestionInternacionalUSD * er)} accent />
               {/* Línea decorativa: visible al cliente pero NO incluida en el total */}
@@ -358,7 +358,7 @@ function AuctionCalcInteractive({
               <BreakdownRow icon={Receipt} label={`Fees ${platform === "copart" ? "Copart" : "IAAI"}`} usd={calcResult.platformFees.total} gtq={Math.round(calcResult.platformFees.total * er)} />
               <BreakdownRow icon={Truck} label={`Transporte USA (${calcResult.vehicleSize.label})`} usd={calcResult.usaTransport} gtq={Math.round(calcResult.usaTransport * er)} />
               <BreakdownRow icon={Ship} label="Flete Marítimo (Pto. Quetzal)" usd={calcResult.maritimeShipping} gtq={Math.round(calcResult.maritimeShipping * er)} />
-              <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={Math.round(calcResult.guatemalaTax / er)} gtq={calcResult.guatemalaTax} />
+              <BreakdownRow icon={Receipt} label="Impuestos Guatemala (32% CIF)" usd={calcResult.guatemalaTax} gtq={Math.round(calcResult.guatemalaTax * er)} />
               <BreakdownRow icon={Receipt} label="Gastos Varios" usd={Math.round(calcResult.miscExpensesGTQ / er)} gtq={calcResult.miscExpensesGTQ} />
               <BreakdownRow icon={CheckCircle2} label="Gestión Internacional" usd={calcResult.gestionInternacionalUSD} gtq={Math.round(calcResult.gestionInternacionalUSD * er)} accent />
               {/* Línea decorativa: visible al cliente pero NO incluida en el total */}
