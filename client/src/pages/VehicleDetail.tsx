@@ -770,23 +770,45 @@ export default function VehicleDetail() {
 
             {/* Case 1: Buy Now only */}
             {hasBuyNow && !hasBid && (
-              <CalcPanel
-                title="Cotización — Comprar Ahora"
-                subtitle="Precio fijo · Disponible inmediatamente"
-                price={buyNowPrice!}
-                platform={platform as "copart" | "iaai"}
-                stateCode={stateCode}
-                bodyType={bodyType}
-                city={city}
-                accentColor="#22c55e"
-                icon={Zap}
-                isBuyNow={true}
-                whatsappMsg={baseWhatsapp}
-                buyNowWhatsappMsg={buyNowWhatsapp}
-                make={make}
-                model={model}
-                year={vehicle.year ?? undefined}
-              />
+              <>
+                <CalcPanel
+                  title="Cotización — Comprar Ahora"
+                  subtitle="Precio fijo · Disponible inmediatamente"
+                  price={buyNowPrice!}
+                  platform={platform as "copart" | "iaai"}
+                  stateCode={stateCode}
+                  bodyType={bodyType}
+                  city={city}
+                  accentColor="#22c55e"
+                  icon={Zap}
+                  isBuyNow={true}
+                  whatsappMsg={baseWhatsapp}
+                  buyNowWhatsappMsg={buyNowWhatsapp}
+                  make={make}
+                  model={model}
+                  year={vehicle.year ?? undefined}
+                />
+
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-[#243048]"></div>
+                  <span className="text-slate-500 text-xs font-medium px-2">o también puedes subastar</span>
+                  <div className="flex-1 h-px bg-[#243048]"></div>
+                </div>
+
+                {/* Calculadora de puja */}
+                <AuctionCalcInteractive
+                  platform={platform as "copart" | "iaai"}
+                  stateCode={stateCode}
+                  bodyType={bodyType}
+                  city={city}
+                  currentBid={0}
+                  whatsappBase={baseWhatsapp}
+                  make={make}
+                  model={model}
+                  year={vehicle.year ?? undefined}
+                />
+              </>
             )}
 
             {/* Case 2: Auction only */}
