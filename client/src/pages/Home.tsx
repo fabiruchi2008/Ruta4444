@@ -35,7 +35,7 @@ const steps = [
 function normalizeVehicle(v: any) {
   const lot = v.lots?.[0] || {};
   const domainId = lot.domain?.id ?? v.domain_id;
-  const images = lot.images?.normal || lot.images?.small || [];
+  const images = lot.images?.downloaded || lot.images?.small || lot.images?.normal || [];
   return {
     id: v.id,
     year: v.year,

@@ -379,8 +379,10 @@ export async function getDamages(): Promise<{ data: Array<{ id: number; name: st
 export function getPrimaryImage(vehicle: AuctionVehicle): string | null {
   for (const lot of vehicle.lots) {
     const imgs = lot.images;
-    if (imgs?.normal?.length) return imgs.normal[0];
+    // Prefer downloaded (direct .webp URLs), then small, then normal
+    if (imgs?.downloaded?.length) return imgs.downloaded[0];
     if (imgs?.small?.length) return imgs.small[0];
+    if (imgs?.normal?.length) return imgs.normal[0];
   }
   return null;
 }
