@@ -119,6 +119,19 @@ const US_STATES = [
   "VA","WA","WV","WI","WY",
 ];
 
+const STATE_NAMES: Record<string, string> = {
+  AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",
+  CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",
+  HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",
+  KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",
+  MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",
+  MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",
+  NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",
+  OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",
+  SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",
+  VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming",
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -152,7 +165,9 @@ function normalizeVehicle(raw: any) {
 
   // Ubicación: lot.location es objeto { state: { code }, city }
   const stateCode = firstLot.location?.state?.code ?? firstLot.state_code ?? raw.state_code ?? "";
-  const location = firstLot.location?.city ?? firstLot.location ?? raw.location ?? "";
+  const rawCity = firstLot.location?.city ?? (typeof firstLot.location === "string" ? firstLot.location : "") ?? raw.location ?? "";
+  const stateName = stateCode ? (STATE_NAMES[stateCode.toUpperCase()] ?? stateCode) : "";
+  const location = rawCity && stateName ? `${rawCity}, ${stateName}` : rawCity || stateName;
 
   // Odómetro: lot.odometer.mi
   const odometer = firstLot.odometer?.mi ?? firstLot.odometer_mi ?? raw.odometer ?? null;
@@ -292,10 +307,8 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
   );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden hover:border-[#00C8E0]/30 transition-all duration-200 group"
+    <div
+      className="bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden hover:border-[#00C8E0]/30 transition-colors duration-150 group"
     >
       <div className="flex flex-col sm:flex-row">
         {/* ── Image ── */}
@@ -534,7 +547,7 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
