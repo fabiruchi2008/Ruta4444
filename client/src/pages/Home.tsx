@@ -61,7 +61,7 @@ export default function Home() {
     const t = setTimeout(() => setFeaturedEnabled(true), 6000);
     return () => clearTimeout(t);
   }, []);
-  const featuredInput = useMemo(() => ({ per_page: 12, exclude_expired_auctions: 1, buy_now: 1, buy_now_price_to: 20000 }), []);
+  const featuredInput = useMemo(() => ({ per_page: 24, exclude_expired_auctions: 1, buy_now: 1 }), []);
   const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput, {
     enabled: featuredEnabled,
     staleTime: 10 * 60 * 1000,
