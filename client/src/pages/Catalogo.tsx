@@ -699,6 +699,10 @@ export default function Catalogo() {
       ...debouncedFilters,
       status: 0,
       ...(isBuyNow ? {} : { exclude_expired_auctions: 1 }),
+      // Si el usuario no eligió un orden manual, ordenar por fecha de subasta ascendente
+      // para que los vehículos sin fecha queden al final desde el servidor
+      sort: debouncedFilters.sort ?? "sale_date",
+      order: debouncedFilters.order ?? "asc",
     };
   }, [debouncedFilters]);
 
