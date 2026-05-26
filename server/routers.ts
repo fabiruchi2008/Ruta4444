@@ -124,7 +124,7 @@ export const appRouter = router({
         platform: z.enum(["copart", "iaai"]),
         stateCode: z.string().min(2).max(3),
         bodyType: z.string().nullable().optional(),
-        city: z.string().nullable().optional(),
+        city: z.union([z.string(), z.object({ id: z.number().optional(), name: z.string() })]).nullable().optional(),
         make: z.string().nullable().optional(),
         model: z.string().nullable().optional(),
         year: z.number().nullable().optional(),
@@ -132,12 +132,13 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const exchangeRate = parseFloat(await getSetting("exchange_rate", "7.80"));
         const minProfitGTQ = parseFloat(await getSetting("min_profit_gtq", "10000"));
+        const cityStr = input.city == null ? null : (typeof input.city === "string" ? input.city : input.city.name);
         const result = await calculateImportCost({
           auctionPrice: input.auctionPrice,
           platform: input.platform,
           stateCode: input.stateCode,
           bodyType: input.bodyType ?? null,
-          city: input.city ?? null,
+          city: cityStr,
           make: input.make ?? null,
           model: input.model ?? null,
           year: input.year ?? null,

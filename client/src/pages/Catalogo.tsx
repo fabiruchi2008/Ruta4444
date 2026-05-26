@@ -165,7 +165,9 @@ function normalizeVehicle(raw: any) {
 
   // Ubicación: lot.location es objeto { state: { code }, city }
   const stateCode = firstLot.location?.state?.code ?? firstLot.state_code ?? raw.state_code ?? "";
-  const rawCity = firstLot.location?.city ?? (typeof firstLot.location === "string" ? firstLot.location : "") ?? raw.location ?? "";
+  // city puede ser objeto {id, name} o string
+  const cityRaw = firstLot.location?.city;
+  const rawCity = typeof cityRaw === "string" ? cityRaw : (cityRaw?.name ?? "");
   const stateName = stateCode ? (STATE_NAMES[stateCode.toUpperCase()] ?? stateCode) : "";
   const location = rawCity && stateName ? `${rawCity}, ${stateName}` : rawCity || stateName;
 

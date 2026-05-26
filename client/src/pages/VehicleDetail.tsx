@@ -71,7 +71,9 @@ function normalizeVehicleDetail(v: AuctionVehicle) {
     else if (lot.images?.small?.length) allImages.push(...lot.images.small);
   }
   const stateCode = primaryLot?.location?.state?.code ?? "FL";
-  const city = primaryLot?.location?.city ?? null;
+  // city es objeto {id, name} en la API real
+  const cityRaw = primaryLot?.location?.city as any;
+  const city: string | null = cityRaw == null ? null : (typeof cityRaw === "string" ? cityRaw : (cityRaw?.name ?? null));
   const bidPrice = primaryLot?.bid ?? primaryLot?.final_bid ?? 0;
   // Real API field is lot.buy_now (number), buy_now_price is an alias
   const buyNowPrice: number | null = (() => {
