@@ -479,7 +479,8 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
     const gestionInternacionalUSD = RUTA_CARS_PROFIT_USD; // ganancia por defecto
     const maritimeShipping = await getOceanRate(vehicleSize.size);
     const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
-    const guatemalaTax = Math.round(cifValue * 0.32);
+    // Base imponible: solo precio subasta + fees
+    const guatemalaTax = Math.round((auctionPrice + platformFees.total) * 0.32);
     const miscExpensesGTQ = 5000;
     const rutaCarsServiceUSD = 500; // decorativo
     const totalCostUSD = cifValue + guatemalaTax / exchangeRate + miscExpensesGTQ / exchangeRate + gestionInternacionalUSD;
@@ -504,7 +505,9 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
 
   // 5. Calcular costo base de importación (sin ganancia de Ruta Cars)
   const baseCostWithoutProfit = auctionPrice + platformFees.total + usaTransportBase + maritimeShipping;
-  const baseTaxWithoutProfit = Math.round(baseCostWithoutProfit * 0.32);
+  // Base imponible del 32%: solo precio subasta + fees de plataforma
+  const taxBase = auctionPrice + platformFees.total;
+  const baseTaxWithoutProfit = Math.round(taxBase * 0.32);
   const miscExpensesGTQ = 5000;
   const rutaCarsServiceUSD = 500;
   const baseTotalCostGTQ = Math.round(
@@ -545,8 +548,8 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
       internalProfitUSD = Math.ceil(dynamicProfitGTQ / exchangeRate);
     }
   } else {
-    // Sin datos de mercado GT: usar ganancia fija de $500
-    internalProfitUSD = input.internalProfitUSD ?? RUTA_CARS_PROFIT_USD;
+    // Sin datos de mercado GT: aplicar ganancia mínima de Q10,000
+    internalProfitUSD = Math.ceil(minProfitGTQ / exchangeRate);
   }
 
   // 8. Calcular totales con la ganancia determinada
@@ -555,7 +558,8 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
   // gestionInternacional = la ganancia real de Ruta Cars GT (sí suma al total)
   const gestionInternacionalUSD = internalProfitUSD;
   const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
-  const guatemalaTax = Math.round(cifValue * 0.32);
+  // Base imponible del 32%: solo precio subasta + fees de plataforma
+  const guatemalaTax = Math.round((auctionPrice + platformFees.total) * 0.32);
   // totalCostUSD incluye Gestión Internacional pero NO incluye rutaCarsServiceUSD ($500 decorativo)
   const totalCostUSD = cifValue + guatemalaTax / exchangeRate + miscExpensesGTQ / exchangeRate + gestionInternacionalUSD;
   const finalPriceGTQ = Math.round(totalCostUSD * exchangeRate);
@@ -568,7 +572,7 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
     { label: `Fees ${platform === "copart" ? "Copart" : "IAAI"} + Autobid`, amountUSD: platformFees.total, amountGTQ: Math.round(platformFees.total * exchangeRate) },
     { label: "Transporte USA (grúa al puerto)", amountUSD: usaTransport, amountGTQ: Math.round(usaTransport * exchangeRate) },
     { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
-    { label: "Impuestos Guatemala (32% CIF)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
+    { label: "Impuestos Guatemala (32%)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
     { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
     { label: "Gestión Internacional", amountUSD: gestionInternacionalUSD, amountGTQ: Math.round(gestionInternacionalUSD * exchangeRate) },
     // Línea decorativa: visible al cliente pero NO suma al total
@@ -623,7 +627,8 @@ export function calculateImportCostSync(input: Omit<ImportCalculationInput, 'cit
   const maritimeShipping = FALLBACK_OCEAN_RATES[vehicleSize.size] ?? 1100;
 
   const cifValue = auctionPrice + platformFees.total + usaTransport + maritimeShipping;
-  const guatemalaTax = Math.round(cifValue * 0.32);
+  // Base imponible del 32%: solo precio subasta + fees de plataforma
+  const guatemalaTax = Math.round((auctionPrice + platformFees.total) * 0.32);
   const miscExpensesGTQ = 5000;
   const rutaCarsServiceUSD = 500; // decorativo, NO suma al total
 
@@ -637,7 +642,7 @@ export function calculateImportCostSync(input: Omit<ImportCalculationInput, 'cit
     { label: `Fees ${platform === "copart" ? "Copart" : "IAAI"} + Autobid`, amountUSD: platformFees.total, amountGTQ: Math.round(platformFees.total * exchangeRate) },
     { label: "Transporte USA (grúa al puerto)", amountUSD: usaTransport, amountGTQ: Math.round(usaTransport * exchangeRate) },
     { label: "Flete Marítimo (Royal Shipping)", amountUSD: maritimeShipping, amountGTQ: Math.round(maritimeShipping * exchangeRate) },
-    { label: "Impuestos Guatemala (32% CIF)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
+    { label: "Impuestos Guatemala (32%)", amountUSD: Math.round(guatemalaTax / exchangeRate), amountGTQ: guatemalaTax },
     { label: "Gastos Varios (trámites, aduana)", amountUSD: Math.round(miscExpensesGTQ / exchangeRate), amountGTQ: miscExpensesGTQ },
     { label: "Gestión Internacional", amountUSD: gestionInternacionalUSD, amountGTQ: Math.round(gestionInternacionalUSD * exchangeRate) },
     // Línea decorativa: visible al cliente pero NO suma al total
