@@ -278,6 +278,7 @@ function countActiveFilters(f: CatalogFilters): number {
 
 function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
   const v = normalizeVehicle(rawVehicle);
+  const smallFallback = rawVehicle?.lots?.[0]?.images?.small?.[0] ?? null;
   const fuelLabel = tES(FUEL_ES, v.fuelType);
   const transmissionLabel = tES(TRANSMISSION_ES, v.transmission);
   const conditionLabel = tES(CONDITION_ES, v.condition);
@@ -298,7 +299,7 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
     >
       <div className="flex flex-col sm:flex-row">
         {/* ── Image ── */}
-        <div className="relative sm:w-52 lg:w-60 flex-shrink-0 bg-[#0B1120] overflow-hidden">
+          <div className="relative sm:w-52 lg:w-60 flex-shrink-0 bg-[#0B1120] overflow-hidden">
           <div className="aspect-[4/3] sm:aspect-auto sm:h-full min-h-[140px]">
             {v.primaryImage ? (
               <img
@@ -306,6 +307,14 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
                 alt={`${v.year} ${v.make} ${v.model}`}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 loading="lazy"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (smallFallback && img.src !== smallFallback) {
+                    img.src = smallFallback;
+                  } else {
+                    img.style.display = 'none';
+                  }
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
