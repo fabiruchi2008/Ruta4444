@@ -302,18 +302,19 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
   const conditionLabel = tES(CONDITION_ES, v.condition);
   const damageLabel = tES(DAMAGE_ES, v.damageType);
 
+  const vehicleLink = `https://rutacarsgt.com/vehiculo/${v.lotNumber || v.id}`;
   const whatsappBuyNow = encodeURIComponent(
-    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber}) a $${v.buyNowPrice?.toLocaleString()} en ${v.platformLabel}. ¿Cómo procedo?`
+    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber}) a $${v.buyNowPrice?.toLocaleString()} en ${v.platformLabel}. ¿Cómo procedo?\n🔗 ${vehicleLink}`
   );
   const whatsappAuction = encodeURIComponent(
-    `Hola Ruta Cars GT, me interesa el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber || v.id}) en ${v.platformLabel}`
+    `Hola Ruta Cars GT, me interesa el ${v.year} ${v.make} ${v.model} (Lote: ${v.lotNumber || v.id}) en ${v.platformLabel}\n🔗 ${vehicleLink}`
   );
 
   return (
-    <div
-      className="bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden hover:border-[#00C8E0]/30 transition-colors duration-150 group"
-    >
-      <div className="flex flex-col sm:flex-row">
+    <div className="relative bg-[#111827] border border-[#1F2D45] rounded-xl overflow-hidden hover:border-[#00C8E0]/30 transition-colors duration-150 group">
+      {/* Clickable overlay — whole card goes to vehicle detail, except interactive buttons */}
+      <Link href={`/vehiculo/${v.lotNumber || v.id}`} className="absolute inset-0 z-0" aria-label={`Ver ${v.year} ${v.make} ${v.model}`} />
+      <div className="relative z-10 flex flex-col sm:flex-row pointer-events-none">
         {/* ── Image ── */}
           <div className="relative sm:w-52 lg:w-60 flex-shrink-0 bg-[#0B1120] overflow-hidden">
           <div className="aspect-[4/3] sm:aspect-auto sm:h-full min-h-[140px]">
@@ -517,7 +518,7 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
             </div>
 
             {/* Action buttons */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 pointer-events-auto">
               {v.buyNowPrice ? (
                 <>
                   <a
