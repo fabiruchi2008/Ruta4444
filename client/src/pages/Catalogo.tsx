@@ -420,10 +420,9 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
               )}
               {v.titleType && (() => {
                 const badge = getTitleBadgeProps(v.titleType);
-                if (badge.risk === "green") return null;
                 return (
                   <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.bgClass} ${badge.textClass} ${badge.borderClass}`} title={badge.tooltip}>
-                    {badge.risk === "red" ? "⛔" : "⚠️"} {badge.label}
+                    {badge.risk === "red" ? "⛔" : badge.risk === "yellow" ? "⚠️" : "✅"} {badge.label}
                   </span>
                 );
               })()}
