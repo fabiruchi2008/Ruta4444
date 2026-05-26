@@ -470,14 +470,16 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
                   <span className="font-semibold text-slate-200">{v.color}</span>
                 </div>
               )}
-              {v.saleDate && (
-                <div className="flex items-center gap-1.5 text-slate-400 col-span-2">
-                  <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Subasta</span>
+              <div className="flex items-center gap-1.5 text-slate-400 col-span-2">
+                <span className="text-slate-600 text-[9px] font-semibold uppercase tracking-wider w-16 flex-shrink-0">Subasta</span>
+                {v.saleDate ? (
                   <span className="font-semibold text-orange-400">
                     {new Date(v.saleDate).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </span>
-                </div>
-              )}
+                ) : (
+                  <span className="font-semibold text-slate-500 italic">Sin fecha de subasta</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -728,13 +730,24 @@ export default function Catalogo() {
   // searchByVin también devuelve { data: AuctionVehicle } (objeto único)
   // catalog.search devuelve { data: AuctionVehicle[], meta: {...} }
   const rawVehiclesData = (rawData as any)?.data;
-  const vehicles: any[] = Array.isArray(rawVehiclesData)
+  const rawVehiclesList: any[] = Array.isArray(rawVehiclesData)
     ? rawVehiclesData
     : rawVehiclesData != null
     ? [rawVehiclesData]
     : Array.isArray(rawData)
     ? rawData
     : [];
+
+  // Ordenar: vehículos CON fecha de subasta primero (por fecha más próxima), sin fecha al final
+  const vehicles: any[] = [...rawVehiclesList].sort((a, b) => {
+    const dateA = a.lots?.[0]?.sale_date ?? a.sale_date ?? null;
+    const dateB = b.lots?.[0]?.sale_date ?? b.sale_date ?? null;
+    if (dateA && !dateB) return -1; // A tiene fecha, B no → A va primero
+    if (!dateA && dateB) return 1;  // B tiene fecha, A no → B va primero
+    if (dateA && dateB) return new Date(dateA).getTime() - new Date(dateB).getTime(); // ambos tienen fecha → más próxima primero
+    return 0; // ambos sin fecha → mantener orden original
+  });
+
   const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
   const totalPages = Math.ceil(total / filters.per_page);
 

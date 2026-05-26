@@ -24,6 +24,12 @@ const NON_EXPORTABLE_KEYWORDS = [
   "DISMANTLED",
 ];
 
+// Títulos que son EXPORTABLES aunque contengan "SALVAGE" (Autobidmaster los acepta en verde)
+const SALVAGE_CERTIFICATE_KEYWORDS = [
+  "SALVAGE CERTIFICATE",
+  "SALVAGE CERT",
+];
+
 // Títulos exportables pero con trámite extra
 const PROBLEMATIC_KEYWORDS = [
   "JUNK",
@@ -44,6 +50,11 @@ const PROBLEMATIC_KEYWORDS = [
 export function classifyTitle(titleType: string | null | undefined): TitleRisk {
   if (!titleType) return "green";
   const upper = titleType.toUpperCase();
+
+  // Primero verificar si es un Salvage Certificate (exportable, verde)
+  for (const kw of SALVAGE_CERTIFICATE_KEYWORDS) {
+    if (upper.includes(kw)) return "green";
+  }
 
   for (const kw of NON_EXPORTABLE_KEYWORDS) {
     if (upper.includes(kw)) return "red";
