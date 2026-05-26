@@ -7,6 +7,7 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect, useCallback } from "react";
 import type { AuctionVehicle } from "../../../server/auctionsApi";
 import { useSEO } from "@/hooks/useSEO";
+import { getTitleBadgeProps } from "@/lib/titleUtils";
 
 // ─── Translations ─────────────────────────────────────────────────────────────
 
@@ -94,10 +95,13 @@ function normalizeVehicleDetail(v: AuctionVehicle) {
   const highlights = primaryLot?.highlights ?? null;
   const transmission = (v as any).transmission?.name ?? (v as any).transmission ?? null;
   const saleDate = primaryLot?.sale_date ?? null;
+  const titleType = primaryLot?.title?.name ?? null;
+  const detailedTitle = primaryLot?.detailed_title?.name ?? null;
   return {
     ...v, platform, platformLabel, platformColor, allImages, stateCode, city,
     bidPrice, buyNowPrice, odometer, fuelType, bodyType, make, model,
     damageType, lotNumber, condition, highlights, transmission, saleDate,
+    titleType, detailedTitle,
   };
 }
 
@@ -543,16 +547,19 @@ export default function VehicleDetail() {
     platform, platformLabel, platformColor, allImages, stateCode, city,
     bidPrice, buyNowPrice, odometer, fuelType, bodyType, make, model,
     damageType, lotNumber, condition, highlights, transmission, saleDate,
+    titleType, detailedTitle,
   } = vehicle;
 
   const hasBid = bidPrice > 0;
   const hasBuyNow = buyNowPrice != null && buyNowPrice > 0;
 
+  const vehicleLink = `https://rutacarsgt.com/vehiculo/${lotNumber}`;
+
   const baseWhatsapp = encodeURIComponent(
-    `Hola Ruta Cars GT! Me interesa el ${vehicle.year} ${make} ${model} (Lote #${lotNumber}) en ${platformLabel}.`
+    `Hola Ruta Cars GT! Me interesa el ${vehicle.year} ${make} ${model} (Lote #${lotNumber}) en ${platformLabel}.\n🔗 ${vehicleLink}`
   );
   const buyNowWhatsapp = encodeURIComponent(
-    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${vehicle.year} ${make} ${model} (Lote #${lotNumber}) a $${buyNowPrice?.toLocaleString()} en ${platformLabel}. ¿Cómo procedo?`
+    `Hola Ruta Cars GT! Quiero COMPRAR AHORA el ${vehicle.year} ${make} ${model} (Lote #${lotNumber}) a $${buyNowPrice?.toLocaleString()} en ${platformLabel}. ¿Cómo procedo?\n🔗 ${vehicleLink}`
   );
 
   const saleDateFmt = saleDate ? new Date(saleDate).toLocaleDateString("es-GT", {
@@ -668,6 +675,20 @@ export default function VehicleDetail() {
                 )}
               </div>
             )}
+
+            {/* Title Type Badge */}
+            {titleType && (() => {
+              const badge = getTitleBadgeProps(titleType);
+              return (
+                <div className={`${badge.bgClass} border ${badge.borderClass} rounded-xl p-3`} title={badge.tooltip}>
+                  <p className="text-slate-500 text-xs mb-1">Tipo de Título</p>
+                  <p className={`text-sm font-semibold ${badge.textClass}`}>{badge.label}</p>
+                  {badge.risk !== "green" && (
+                    <p className="text-xs mt-1 opacity-80">{badge.tooltip}</p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Sale date */}
             {saleDateFmt && (

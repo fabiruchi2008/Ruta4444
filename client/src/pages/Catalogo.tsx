@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
-
+import { getTitleBadgeProps } from "@/lib/titleUtils";
 // ─── Traducciones ─────────────────────────────────────────────────────────────
 
 const FUEL_ES: Record<string, string> = {
@@ -215,6 +215,7 @@ function normalizeVehicle(raw: any) {
     driveWheel: raw.drive_wheel?.name ?? (typeof raw.drive_wheel === "string" ? raw.drive_wheel : ""),
     color: raw.color?.name ?? (typeof raw.color === "string" ? raw.color : ""),
     keys: firstLot.keys ?? null,
+    titleType: firstLot.title?.name ?? null,
   };
 }
 
@@ -415,6 +416,15 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
                   {v.engineSize} · {v.cylinders} cil.
                 </span>
               )}
+              {v.titleType && (() => {
+                const badge = getTitleBadgeProps(v.titleType);
+                if (badge.risk === "green") return null;
+                return (
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.bgClass} ${badge.textClass} ${badge.borderClass}`} title={badge.tooltip}>
+                    {badge.risk === "red" ? "⛔" : "⚠️"} {badge.label}
+                  </span>
+                );
+              })()}
               {fuelLabel && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#1F2D45] text-slate-300 border border-[#243048]">
                   <Fuel className="w-2.5 h-2.5" /> {fuelLabel}
@@ -710,7 +720,17 @@ export default function Catalogo() {
   const isLoading = searchType === "vin" ? vinQuery.isLoading : searchType === "lot" ? lotQuery.isLoading : generalQuery.isLoading;
   const error = searchType === "vin" ? vinQuery.error : searchType === "lot" ? lotQuery.error : generalQuery.error;
   const rawData = searchType === "vin" ? vinQuery.data : searchType === "lot" ? lotQuery.data : generalQuery.data;
-  const vehicles = (rawData as any)?.data || (Array.isArray(rawData) ? rawData : []);
+  // searchByLot devuelve { data: AuctionVehicle } (objeto único), no un array
+  // searchByVin también devuelve { data: AuctionVehicle } (objeto único)
+  // catalog.search devuelve { data: AuctionVehicle[], meta: {...} }
+  const rawVehiclesData = (rawData as any)?.data;
+  const vehicles: any[] = Array.isArray(rawVehiclesData)
+    ? rawVehiclesData
+    : rawVehiclesData != null
+    ? [rawVehiclesData]
+    : Array.isArray(rawData)
+    ? rawData
+    : [];
   const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
   const totalPages = Math.ceil(total / filters.per_page);
 

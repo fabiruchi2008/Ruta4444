@@ -200,6 +200,8 @@ export interface AuctionLot {
   images: AuctionImage | null;
   keys: boolean | null;
   highlights: string | null;
+  title: { id: number; code: string | null; name: string } | null;
+  detailed_title: { id: number; code: string | null; name: string } | null;
 }
 
 export interface AuctionVehicle {
