@@ -55,25 +55,45 @@ function normalizeVehicle(v: any) {
 }
 
 export default function Home() {
-  // Delay featured vehicles load by 6s to avoid competing with catalog/other queries
-  const [featuredEnabled, setFeaturedEnabled] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setFeaturedEnabled(true), 6000);
-    return () => clearTimeout(t);
-  }, []);
-  const featuredInput = useMemo(() => ({ per_page: 24, exclude_expired_auctions: 1, buy_now: 1 }), []);
-  const { data: featuredData } = trpc.vehicles.search.useQuery(featuredInput, {
-    enabled: featuredEnabled,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 20 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    retry: false,
-  });
-  // Solo carros con precio Buy Now real > 0
-  const featuredVehicles = ((featuredData as any)?.data || [])
-    .map((raw: any) => normalizeVehicle(raw))
-    .filter((v: any) => v.buyNowPrice && v.buyNowPrice > 0)
-    .slice(0, 6);
+  // Vehículos destacados fijos — lotes reales de Copart/IAAI
+  const featuredVehicles = [
+    {
+      id: "39910724", lot: "39910724", year: 2013, make: "Ferrari", model: "458 Spider",
+      image: "https://cars.import-motor.com/iaai/ferrari/458/2013/39910724/ZFF68NHA6D0189693-1.webp",
+      platform: "IAAI", platformColor: "#F97316", state: "FL", odometer: 1,
+      damage: "Side", buyNowPrice: null,
+    },
+    {
+      id: "14979958", lot: "14979958", year: 2022, make: "Ford", model: "F-150",
+      image: "https://cars2.import-motor.com/iaai/ford/f-150/2022/14979958/1FTFW1E59NFA30895-1.webp",
+      platform: "IAAI", platformColor: "#F97316", state: "TX", odometer: 42000,
+      damage: "Front End", buyNowPrice: null,
+    },
+    {
+      id: "61431835", lot: "61431835", year: 2022, make: "Lamborghini", model: "Urus",
+      image: "https://cars.import-motor.com/copart/lamborghini/urus/2022/61431835/ZPBCA1ZL6NLA17591-1.webp",
+      platform: "Copart", platformColor: "#00C8E0", state: "CA", odometer: 8500,
+      damage: "Rear End", buyNowPrice: null,
+    },
+    {
+      id: "47347266", lot: "47347266", year: 2017, make: "Porsche", model: "911 Carrera",
+      image: "https://cars2.import-motor.com/copart/porsche/911/2017/47347266/WP0AB2A95HS123655-1.webp",
+      platform: "Copart", platformColor: "#00C8E0", state: "CA", odometer: 28000,
+      damage: "Front End", buyNowPrice: null,
+    },
+    {
+      id: "77685215", lot: "77685215", year: 2019, make: "Lamborghini", model: "Urus",
+      image: "https://cars2.import-motor.com/copart/lamborghini/urus/2019/77685215/ZPBUA1ZL6KLA04680-1.webp",
+      platform: "Copart", platformColor: "#00C8E0", state: "FL", odometer: 15000,
+      damage: "Side", buyNowPrice: null,
+    },
+    {
+      id: "51468406", lot: "51468406", year: 2017, make: "Ferrari", model: "California T",
+      image: "https://cars2.import-motor.com/copart/ferrari/california/2017/51468406/ZFF77XJA2H0226113-1.webp",
+      platform: "Copart", platformColor: "#00C8E0", state: "TX", odometer: 22000,
+      damage: "Front End", buyNowPrice: null,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#080D18]">
