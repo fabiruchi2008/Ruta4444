@@ -30,18 +30,20 @@ export const MIN_PROFIT_GTQ = 10000; // Ganancia mínima base en quetzales
 export const MARKET_DISCOUNT_FACTOR = 0.87; // El cliente paga 13% menos que el mercado local
 
 /**
- * Ganancia mínima de Ruta Cars GT según el costo total del vehículo puesto en Guatemala.
+ * Ganancia fija de Ruta Cars GT según el costo base del vehículo puesto en Guatemala.
  * El $500 decorativo (Servicio Ruta Cars GT) ya está INCLUIDO dentro de estos montos.
  *
  * Rangos (costo base sin ganancia, en GTQ):
- *  - Menos de Q70,000      → Q10,000
- *  - Q70,000 – Q149,999   → Q15,000
- *  - Q150,000 en adelante → Q20,000
+ *  - Menos de Q60,000          → Q5,000
+ *  - Q60,000 – Q120,000      → Q10,000
+ *  - Q120,000 – Q200,000     → Q15,000
+ *  - Más de Q200,000         → Q20,000
  */
 export function getMinProfitGTQ(baseCostGTQ: number): number {
-  if (baseCostGTQ >= 150000) return 20000;
-  if (baseCostGTQ >= 70000) return 15000;
-  return 10000;
+  if (baseCostGTQ >= 200000) return 20000;
+  if (baseCostGTQ >= 120000) return 15000;
+  if (baseCostGTQ >= 60000) return 10000;
+  return 5000;
 }
 
 // ─── Fees fijos de Autobidmaster (siempre se cobran) ─────────────────────────
@@ -561,47 +563,12 @@ export async function calculateImportCost(input: ImportCalculationInput): Promis
   }
 
   // 7. Determinar ganancia final
+  // Usar siempre los rangos fijos según el costo base (sin ganancia dinámica)
   let internalProfitUSD: number;
   let needsManualQuote = false;
   let manualQuoteReason: "special_vehicle" | "low_profit" | undefined;
 
-  // Lógica de ganancia según costo base y precio de mercado GT:
-  //
-  // Costo base < Q60,000:
-  //   - Si mercado GT supera costo base → ganancia dinámica (mínimo Q5,000)
-  //   - Si mercado GT NO supera o no hay datos → Q10,000 fijo
-  //
-  // Costo base ≥ Q60,000:
-  //   - Si mercado GT supera costo base → ganancia dinámica automática
-  //   - Si mercado GT NO supera costo base → Q10,000 fijo
-  //   - Si no hay datos de mercado GT → rangos normales (Q10k/Q15k/Q20k)
-
-  const SMALL_CAR_THRESHOLD_GTQ = 60000;
-  const SMALL_CAR_MIN_PROFIT_GTQ = 5000;  // mínimo para carros baratos con mercado favorable
-  const FALLBACK_MIN_PROFIT_GTQ = 10000;  // cuando mercado GT no supera o no hay datos
-
-  if (baseTotalCostGTQ < SMALL_CAR_THRESHOLD_GTQ) {
-    // Vehículo barato (< Q60,000)
-    if (gtMarketPriceGTQ && dynamicProfitGTQ >= SMALL_CAR_MIN_PROFIT_GTQ) {
-      // Mercado GT supera el costo base con al menos Q5,000 de ganancia
-      internalProfitUSD = Math.ceil(Math.max(dynamicProfitGTQ, SMALL_CAR_MIN_PROFIT_GTQ) / exchangeRate);
-    } else {
-      // No hay datos de mercado GT o no supera el costo base → Q10,000 fijo
-      internalProfitUSD = Math.ceil(FALLBACK_MIN_PROFIT_GTQ / exchangeRate);
-    }
-  } else {
-    // Vehículo de Q60,000 en adelante
-    if (gtMarketPriceGTQ && dynamicProfitGTQ > 0) {
-      // Mercado GT supera el costo base → ganancia dinámica automática
-      internalProfitUSD = Math.ceil(Math.max(dynamicProfitGTQ, effectiveMinProfitGTQ) / exchangeRate);
-    } else if (gtMarketPriceGTQ && dynamicProfitGTQ <= 0) {
-      // Mercado GT NO supera el costo base → Q10,000 fijo
-      internalProfitUSD = Math.ceil(FALLBACK_MIN_PROFIT_GTQ / exchangeRate);
-    } else {
-      // Sin datos de mercado GT → rangos normales (Q10k/Q15k/Q20k)
-      internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
-    }
-  }
+  internalProfitUSD = Math.ceil(effectiveMinProfitGTQ / exchangeRate);
 
   // 8. Calcular totales con la ganancia determinada
   // usaTransport = solo el precio real de grúa (sin ganancia)
