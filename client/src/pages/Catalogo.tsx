@@ -701,8 +701,9 @@ export default function Catalogo() {
       ...debouncedFilters,
       status: 0,
       ...(isBuyNow ? {} : { exclude_expired_auctions: 1 }),
-      // Excluir vehículos sin fecha de subasta asignada
-      has_sale_date: 1,
+      // Solo mostrar vehículos que tienen fecha de subasta O tienen Comprar Ahora
+      // Excluir solo los que no tienen NI fecha de subasta NI buy_now
+      has_sale_date_or_buy_now: 1,
       // Si el usuario no eligió un orden manual, ordenar por fecha de subasta ascendente
       sort: debouncedFilters.sort ?? "sale_date",
       order: debouncedFilters.order ?? "asc",
