@@ -757,7 +757,8 @@ export default function Catalogo() {
       return 0;
     });
 
-  const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
+  // El total debe ser el de vehículos filtrados (sin fecha excluida)
+  const total = vehicles.length;
   const totalPages = Math.ceil(total / filters.per_page);
 
   const activeFilterCount = countActiveFilters(filters);
