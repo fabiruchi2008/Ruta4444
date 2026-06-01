@@ -757,8 +757,8 @@ export default function Catalogo() {
       return 0;
     });
 
-  // El total debe ser el de vehículos filtrados (sin fecha excluida)
-  const total = vehicles.length;
+  // El total viene del servidor (meta.total) que ya tiene en cuenta todos los filtros
+  const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
   const totalPages = Math.ceil(total / filters.per_page);
 
   const activeFilterCount = countActiveFilters(filters);
