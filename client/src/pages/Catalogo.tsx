@@ -701,6 +701,8 @@ export default function Catalogo() {
       status: 0,
       // SIEMPRE excluir subastas expiradas (vehículos ya vendidos hace años)
       exclude_expired_auctions: 1,
+      // Excluir vehículos sin fecha de subasta asignada
+      without_sale_date: 0,
       // Si el usuario no eligió un orden manual, ordenar por fecha de subasta ascendente
       sort: debouncedFilters.sort ?? "sale_date",
       order: debouncedFilters.order ?? "asc",
