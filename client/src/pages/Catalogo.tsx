@@ -696,14 +696,11 @@ export default function Catalogo() {
   const searchType = detectSearchType(debouncedSearch);
 
   const queryInput = useMemo(() => {
-    const isBuyNow = debouncedFilters.buy_now === 1;
     return {
       ...debouncedFilters,
       status: 0,
-      ...(isBuyNow ? {} : { exclude_expired_auctions: 1 }),
-      // Solo mostrar vehículos que tienen fecha de subasta O tienen Comprar Ahora
-      // Excluir solo los que no tienen NI fecha de subasta NI buy_now
-      has_sale_date_or_buy_now: 1,
+      // SIEMPRE excluir subastas expiradas (vehículos ya vendidos hace años)
+      exclude_expired_auctions: 1,
       // Si el usuario no eligió un orden manual, ordenar por fecha de subasta ascendente
       sort: debouncedFilters.sort ?? "sale_date",
       order: debouncedFilters.order ?? "asc",
