@@ -717,12 +717,12 @@ export default function Catalogo() {
   );
   const generalQuery = trpc.vehicles.search.useQuery(queryInput, {
     enabled: catalogReady && searchType === "general",
-    staleTime: 25 * 60 * 1000,  // 25 min en cliente (cache servidor es 30 min)
-    gcTime: 60 * 60 * 1000,     // mantener en memoria 1 hora
+    staleTime: 2 * 60 * 1000,  // 2 min en cliente para detectar subastas terminadas
+    gcTime: 10 * 60 * 1000,     // mantener en memoria 10 minutos
     placeholderData: (prev: any) => prev,  // mantener datos anteriores mientras carga nuevo filtro
-    refetchInterval: false,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchInterval: 3 * 60 * 1000,  // recargar automáticamente cada 3 minutos
+    refetchOnWindowFocus: true,  // recargar cuando el usuario vuelve a la pestaña
+    refetchOnMount: true,  // recargar cuando se monta el componente
     retry: false,
   });
 

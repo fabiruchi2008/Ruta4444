@@ -285,7 +285,7 @@ export interface SearchCarsParams {
 }
 
 // ─── TTL constants ────────────────────────────────────────────────────────────
-const CACHE_15MIN = 30 * 60 * 1000;  // 30 min (era 15)
+const CACHE_15MIN = 3 * 60 * 1000;  // 3 min para detectar subastas terminadas en tiempo real
 const CACHE_1HOUR = 60 * 60 * 1000;
 
 // ─── API functions ─────────────────────────────────────────────────────────────
