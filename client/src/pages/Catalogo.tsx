@@ -701,7 +701,9 @@ export default function Catalogo() {
       status: 0,
       // SIEMPRE excluir subastas expiradas (vehículos ya vendidos hace años)
       exclude_expired_auctions: 1,
-      // Si el usuario no eligió un orden manual, ordenar por fecha de subasta ascendente
+      // Excluir vehículos sin fecha de subasta asignada
+      without_sale_date: 0,
+      // Si el usuario no eligíió un orden manual, ordenar por fecha de subasta ascendente
       sort: debouncedFilters.sort ?? "sale_date",
       order: debouncedFilters.order ?? "asc",
     };
@@ -743,19 +745,14 @@ export default function Catalogo() {
     : [];
 
   // Ordenar: vehículos CON fecha de subasta primero (por fecha más próxima), sin fecha al final
-  // Filtrar: EXCLUIR vehículos sin fecha de subasta
-  // Luego ordenar: por fecha más próxima
-  const vehicles: any[] = [...rawVehiclesList]
-    .filter((v) => {
-      const saleDate = v.lots?.[0]?.sale_date ?? v.sale_date ?? null;
-      return saleDate && saleDate !== "";
-    })
-    .sort((a, b) => {
-      const dateA = a.lots?.[0]?.sale_date ?? a.sale_date ?? null;
-      const dateB = b.lots?.[0]?.sale_date ?? b.sale_date ?? null;
-      if (dateA && dateB) return new Date(dateA).getTime() - new Date(dateB).getTime();
-      return 0;
-    });
+  const vehicles: any[] = [...rawVehiclesList].sort((a, b) => {
+    const dateA = a.lots?.[0]?.sale_date ?? a.sale_date ?? null;
+    const dateB = b.lots?.[0]?.sale_date ?? b.sale_date ?? null;
+    if (dateA && !dateB) return -1; // A tiene fecha, B no → A va primero
+    if (!dateA && dateB) return 1;  // B tiene fecha, A no → B va primero
+    if (dateA && dateB) return new Date(dateA).getTime() - new Date(dateB).getTime(); // ambos tienen fecha → más próxima primero
+    return 0; // ambos sin fecha → mantener orden original
+  });
 
   // El total viene del servidor (meta.total) que ya tiene en cuenta todos los filtros
   const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
