@@ -333,6 +333,14 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
 
+  // Filtrar vehículos sin fecha de subasta si se solicita (without_sale_date: 0)
+  if (params.without_sale_date === 0 && result.data && Array.isArray(result.data)) {
+    result.data = result.data.filter(v => {
+      const saleDate = v.lots?.[0]?.sale_date ?? null;
+      return saleDate && saleDate !== "";
+    });
+  }
+
   // Client-side sort fallback: if sort was requested, sort the returned page
   if (sort && result.data && Array.isArray(result.data)) {
     result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
