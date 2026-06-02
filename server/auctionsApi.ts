@@ -291,9 +291,13 @@ const CACHE_1HOUR = 60 * 60 * 1000;
 // ─── API functions ─────────────────────────────────────────────────────────────
 
 export async function searchCars(params: SearchCarsParams = {}): Promise<AuctionListResponse> {
-  const { search_query, simple_paginate, sort, order, ...rest } = params;
+  const { search_query, simple_paginate, sort, order, without_sale_date, ...rest } = params;
+  // Si se solicita filtrar sin fecha, pedir más vehículos para compensar los que se van a filtrar
+  const shouldFilterBySaleDate = without_sale_date === 0;
+  const requestedPerPage = rest.per_page ?? 24;
+  const multiplier = shouldFilterBySaleDate ? 2 : 1; // Pedir el doble si vamos a filtrar
   const p: Record<string, string | number | undefined> = {
-    per_page: rest.per_page ?? 24,
+    per_page: requestedPerPage * multiplier,
     page: rest.page ?? 1,
     vehicle_type: 1,
     simple_paginate: 0,
@@ -334,11 +338,13 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
 
   // Filtrar vehículos sin fecha de subasta si se solicita (without_sale_date: 0)
-  if (params.without_sale_date === 0 && result.data && Array.isArray(result.data)) {
+  if (shouldFilterBySaleDate && result.data && Array.isArray(result.data)) {
     result.data = result.data.filter(v => {
       const saleDate = v.lots?.[0]?.sale_date ?? null;
       return saleDate && saleDate !== "";
     });
+    // Devolver solo la cantidad solicitada después de filtrar
+    result.data = result.data.slice(0, requestedPerPage);
   }
 
   // Client-side sort fallback: if sort was requested, sort the returned page
