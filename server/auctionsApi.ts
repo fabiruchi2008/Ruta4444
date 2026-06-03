@@ -333,9 +333,6 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
 
-  // Filtrar vehículos sin fecha de subasta si se solicita (without_sale_date: 0)
-  // Filtro de fecha removido — se aplica en el cliente
-
   // Client-side sort fallback: if sort was requested, sort the returned page
   if (sort && result.data && Array.isArray(result.data)) {
     result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
