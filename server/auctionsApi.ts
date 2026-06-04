@@ -297,6 +297,7 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     page: rest.page ?? 1,
     vehicle_type: 1,
     simple_paginate: 0,
+    has_sale_date: 1,  // Solo vehículos con fecha de subasta o Comprar Ahora
     ...rest,
   };
   // Pass sort/order to API (AuctionsAPI supports sort param)
