@@ -333,6 +333,28 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
 
+  // Ordenar: vehículos CON fecha de subasta primero, SIN fecha al final
+  if (result.data && Array.isArray(result.data)) {
+    result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
+      const aLot = a.lots?.[0];
+      const bLot = b.lots?.[0];
+      const aDate = aLot?.sale_date ?? null;
+      const bDate = bLot?.sale_date ?? null;
+      
+      // Primero: vehículos CON fecha
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      
+      // Si ambos tienen fecha: ordenar por fecha más próxima
+      if (aDate && bDate) {
+        return new Date(aDate).getTime() - new Date(bDate).getTime();
+      }
+      
+      // Si ambos no tienen fecha: mantener orden original
+      return 0;
+    });
+  }
+  
   // Client-side sort fallback: if sort was requested, sort the returned page
   if (sort && result.data && Array.isArray(result.data)) {
     result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
