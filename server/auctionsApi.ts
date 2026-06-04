@@ -298,6 +298,8 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     vehicle_type: 1,
     simple_paginate: 0,
     has_sale_date: 1,  // Solo vehículos con fecha de subasta o Comprar Ahora
+    exclude_expired_auctions: 1,  // Excluir subastas ya terminadas
+    has_price: 1,  // Solo vehículos con precio (puja o Comprar Ahora)
     ...rest,
   };
   // Pass sort/order to API (AuctionsAPI supports sort param)
