@@ -743,14 +743,7 @@ export default function Catalogo() {
     : [];
 
   // Ordenar: vehículos CON fecha de subasta primero (por fecha más próxima), sin fecha al final
-  const vehicles: any[] = [...rawVehiclesList].sort((a, b) => {
-    const dateA = a.lots?.[0]?.sale_date ?? a.sale_date ?? null;
-    const dateB = b.lots?.[0]?.sale_date ?? b.sale_date ?? null;
-    if (dateA && !dateB) return -1; // A tiene fecha, B no → A va primero
-    if (!dateA && dateB) return 1;  // B tiene fecha, A no → B va primero
-    if (dateA && dateB) return new Date(dateA).getTime() - new Date(dateB).getTime(); // ambos tienen fecha → más próxima primero
-    return 0; // ambos sin fecha → mantener orden original
-  });
+  const vehicles: any[] = rawVehiclesList; // Solo usar los vehículos tal como vienen de la API
 
   const total = (rawData as any)?.meta?.total ?? (rawData as any)?.meta?.to ?? vehicles.length;
   const totalPages = Math.ceil(total / filters.per_page);
