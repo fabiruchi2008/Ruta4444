@@ -297,8 +297,6 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     page: rest.page ?? 1,
     vehicle_type: 1,
     simple_paginate: 0,
-    sale_date_in_days: 365,  // Solo subastas en los próximos 365 días (excluye expiradas)
-    buy_now: 1,  // Incluir también los que tienen Comprar Ahora
     ...rest,
   };
   // Pass sort/order to API (AuctionsAPI supports sort param)
@@ -340,8 +338,14 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
 
-  // Ordenar: vehículos CON fecha de subasta primero, SIN fecha al final
+  // Filtrar: SOLO vehículos CON fecha de subasta
   if (result.data && Array.isArray(result.data)) {
+    result.data = result.data.filter((v: AuctionVehicle) => {
+      const hasLot = v.lots && v.lots.length > 0 && v.lots[0].sale_date;
+      return hasLot;
+    });
+
+    // Ordenar: vehículos CON fecha de subasta primero, SIN fecha al final
     result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
       const aLot = a.lots?.[0];
       const bLot = b.lots?.[0];
