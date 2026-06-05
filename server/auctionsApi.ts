@@ -297,14 +297,18 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     page: rest.page ?? 1,
     vehicle_type: 1,
     simple_paginate: 0,
-    has_sale_date: 1,  // Solo vehículos con fecha de subasta o Comprar Ahora
-    exclude_expired_auctions: 1,  // Excluir subastas ya terminadas
-    has_price: 1,  // Solo vehículos con precio (puja o Comprar Ahora)
+    sale_date_in_days: 365,  // Solo subastas en los próximos 365 días (excluye expiradas)
+    buy_now: 1,  // Incluir también los que tienen Comprar Ahora
     ...rest,
   };
   // Pass sort/order to API (AuctionsAPI supports sort param)
   if (sort) p.sort = sort;
   if (order) p.order = order;
+
+  // Si no hay sale_date_in_days, también incluir sin fecha (para Comprar Ahora)
+  if (!p.sale_date_in_days) {
+    // Mantener los que no tienen fecha si no hay filtro de fecha
+  }
 
   if (search_query && search_query.trim()) {
     const q = search_query.trim();
