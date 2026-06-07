@@ -303,11 +303,6 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   if (sort) p.sort = sort;
   if (order) p.order = order;
 
-  // Si no hay sale_date_in_days, también incluir sin fecha (para Comprar Ahora)
-  if (!p.sale_date_in_days) {
-    // Mantener los que no tienen fecha si no hay filtro de fecha
-  }
-
   if (search_query && search_query.trim()) {
     const q = search_query.trim();
     if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(q) || /^\d{6,12}$/.test(q)) {
@@ -338,34 +333,6 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
 
-  // Filtrar: SOLO vehículos CON fecha de subasta
-  if (result.data && Array.isArray(result.data)) {
-    result.data = result.data.filter((v: AuctionVehicle) => {
-      const hasLot = v.lots && v.lots.length > 0 && v.lots[0].sale_date;
-      return hasLot;
-    });
-
-    // Ordenar: vehículos CON fecha de subasta primero, SIN fecha al final
-    result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
-      const aLot = a.lots?.[0];
-      const bLot = b.lots?.[0];
-      const aDate = aLot?.sale_date ?? null;
-      const bDate = bLot?.sale_date ?? null;
-      
-      // Primero: vehículos CON fecha
-      if (aDate && !bDate) return -1;
-      if (!aDate && bDate) return 1;
-      
-      // Si ambos tienen fecha: ordenar por fecha más próxima
-      if (aDate && bDate) {
-        return new Date(aDate).getTime() - new Date(bDate).getTime();
-      }
-      
-      // Si ambos no tienen fecha: mantener orden original
-      return 0;
-    });
-  }
-  
   // Client-side sort fallback: if sort was requested, sort the returned page
   if (sort && result.data && Array.isArray(result.data)) {
     result.data.sort((a: AuctionVehicle, b: AuctionVehicle) => {
