@@ -354,6 +354,28 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     const afterFilterCount = result.data.length;
     console.log(`[AuctionsAPI] Filtered by status.id: ${beforeFilterCount} -> ${afterFilterCount} vehicles`);
     
+    // Additional filters: Exclude old vehicles AND vehicles without price
+    const beforeYearFilter = result.data.length;
+    result.data = result.data.filter((vehicle: AuctionVehicle) => {
+      const lot = vehicle.lots?.[0];
+      if (!lot) return false;
+      
+      // Exclude vehicles from 2014 or earlier (only show 2015+)
+      const vehicleYear = vehicle.year ?? 0;
+      if (vehicleYear <= 2014) return false;
+      
+      // Exclude vehicles without price (bid or buy_now must be > 0)
+      const hasBid = lot.bid && Number(lot.bid) > 0;
+      const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
+      if (!hasBid && !hasBuyNow) return false;
+      
+      return true;
+    });
+    const afterYearFilter = result.data.length;
+    if (beforeYearFilter !== afterYearFilter) {
+      console.log(`[AuctionsAPI] Filtered by year (2020+) & price: ${beforeYearFilter} -> ${afterYearFilter} vehicles`);
+    }
+    
     // Trim to requested per_page if we have more than needed
     if (result.data.length > requestedPerPage) {
       result.data = result.data.slice(0, requestedPerPage);
