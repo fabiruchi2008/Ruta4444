@@ -189,6 +189,9 @@ function normalizeVehicle(raw: any) {
 
   // Fecha de venta
   const saleDate = firstLot.sale_date ?? raw.sale_date ?? null;
+  
+  // Status del lote
+  const status = firstLot.status ?? null;
 
   return {
     id: raw.id,
@@ -206,6 +209,7 @@ function normalizeVehicle(raw: any) {
     stateCode,
     location: typeof location === "string" ? location : "",
     saleDate,
+    status,
     primaryImage,
     bidPrice,
     buyNowPrice,
@@ -477,6 +481,10 @@ function VehicleRow({ vehicle: rawVehicle }: { vehicle: any }) {
                   <span className="font-semibold text-orange-400">
                     {new Date(v.saleDate).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </span>
+                ) : v.status?.id === 3 ? (
+                  <span className="font-semibold text-green-400">En venta</span>
+                ) : v.status?.id === 10 ? (
+                  <span className="font-semibold text-blue-400">Próxima subasta</span>
                 ) : (
                   <span className="font-semibold text-slate-500 italic">Sin fecha de subasta</span>
                 )}

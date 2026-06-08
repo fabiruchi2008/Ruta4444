@@ -197,6 +197,7 @@ export interface AuctionLot {
   damage: { main: { id: number; name: string } | null; secondary: { id: number; name: string } | null } | null;
   odometer: { mi: number | null; km: number | null } | null;
   sale_date: string | null;
+  status: { id: number; name: string } | null;
   images: AuctionImage | null;
   keys: boolean | null;
   highlights: string | null;
@@ -292,8 +293,11 @@ const CACHE_1HOUR = 60 * 60 * 1000;
 
 export async function searchCars(params: SearchCarsParams = {}): Promise<AuctionListResponse> {
   const { search_query, simple_paginate, sort, order, ...rest } = params;
+  // Request more items from API to account for filtering
+  // We'll filter by status.id and return only the requested per_page amount
+  const requestedPerPage = rest.per_page ?? 24;
   const p: Record<string, string | number | undefined> = {
-    per_page: rest.per_page ?? 24,
+    per_page: requestedPerPage * 2,  // Request 2x to have enough after filtering
     page: rest.page ?? 1,
     vehicle_type: 1,
     simple_paginate: 0,
@@ -333,6 +337,38 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     }
   }
   const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
+
+  // Server-side filter: Excluir vehículos sin fecha de subasta
+  // Solo devolver vehículos con status.id = 3 (sale) o 10 (upcoming)
+  // Esto asegura que SOLO aparecen vehículos con fecha de subasta asignada
+  if (result.data && Array.isArray(result.data)) {
+    const beforeFilterCount = result.data.length;
+    result.data = result.data.filter((vehicle: AuctionVehicle) => {
+      const lot = vehicle.lots?.[0];
+      if (!lot) return false;
+      const statusId = lot.status?.id;
+      // Incluir: status 3 (sale) o 10 (upcoming) = tienen fecha de subasta
+      // Excluir: status 9 (future), status 1 (pending), etc. = no tienen fecha
+      return statusId === 3 || statusId === 10;
+    });
+    const afterFilterCount = result.data.length;
+    console.log(`[AuctionsAPI] Filtered by status.id: ${beforeFilterCount} -> ${afterFilterCount} vehicles`);
+    
+    // Trim to requested per_page if we have more than needed
+    if (result.data.length > requestedPerPage) {
+      result.data = result.data.slice(0, requestedPerPage);
+      console.log(`[AuctionsAPI] Trimmed to ${requestedPerPage} vehicles for pagination`);
+    }
+    
+    // Update meta.total to reflect filtered count
+    // This is an approximation: we assume similar filter ratio on all pages
+    if (result.meta && beforeFilterCount > 0) {
+      const filterRatio = afterFilterCount / beforeFilterCount;
+      const estimatedTotal = Math.ceil((result.meta.total ?? 0) * filterRatio);
+      result.meta.total = Math.max(afterFilterCount, estimatedTotal);
+      console.log(`[AuctionsAPI] Updated meta.total to ${result.meta.total} (was ${result.meta.total})`);
+    }
+  }
 
   // Client-side sort fallback: if sort was requested, sort the returned page
   if (sort && result.data && Array.isArray(result.data)) {
