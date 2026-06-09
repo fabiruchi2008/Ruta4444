@@ -336,60 +336,59 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       if (extractedToYear && !p.to_year) p.to_year = extractedToYear;
     }
   }
-  const result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
-
-  // Server-side filter: Excluir vehículos sin fecha de subasta
-  // Solo devolver vehículos con status.id = 3 (sale) o 10 (upcoming)
-  // Esto asegura que SOLO aparecen vehículos con fecha de subasta asignada
-  if (result.data && Array.isArray(result.data)) {
-    const beforeFilterCount = result.data.length;
-    result.data = result.data.filter((vehicle: AuctionVehicle) => {
-      const lot = vehicle.lots?.[0];
-      if (!lot) return false;
-      const statusId = lot.status?.id;
-      // Incluir: status 3 (sale) o 10 (upcoming) = tienen fecha de subasta
-      // Excluir: status 9 (future), status 1 (pending), etc. = no tienen fecha
-      return statusId === 3 || statusId === 10;
-    });
-    const afterFilterCount = result.data.length;
-    console.log(`[AuctionsAPI] Filtered by status.id: ${beforeFilterCount} -> ${afterFilterCount} vehicles`);
+  // Fetch-until-full strategy: keep fetching until we have enough filtered vehicles
+  // This handles cases where many vehicles are filtered out
+  let result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
+  let allVehicles: AuctionVehicle[] = [];
+  let currentPage = Number(p.page) || 1;
+  const maxPages = 5; // Prevent infinite loops
+  let pagesFetched = 0;
+  
+  while (allVehicles.length < requestedPerPage && pagesFetched < maxPages) {
+    if (!result.data || !Array.isArray(result.data)) break;
     
-    // Additional filters: Exclude old vehicles AND vehicles without price
-    const beforeYearFilter = result.data.length;
-    result.data = result.data.filter((vehicle: AuctionVehicle) => {
+    // Apply filters to current batch
+    const filtered = result.data.filter((vehicle: AuctionVehicle) => {
       const lot = vehicle.lots?.[0];
       if (!lot) return false;
       
-      // Exclude vehicles from 2014 or earlier (only show 2015+)
+      // Filter 1: Status must be 3 (sale) or 10 (upcoming)
+      const statusId = lot.status?.id;
+      if (statusId !== 3 && statusId !== 10) return false;
+      
+      // Filter 2: Year must be 2015 or later
       const vehicleYear = vehicle.year ?? 0;
       if (vehicleYear <= 2014) return false;
       
-      // Exclude vehicles without price (bid or buy_now must be > 0)
+      // Filter 3: Must have price (bid or buy_now > 0)
       const hasBid = lot.bid && Number(lot.bid) > 0;
       const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
       if (!hasBid && !hasBuyNow) return false;
       
       return true;
     });
-    const afterYearFilter = result.data.length;
-    if (beforeYearFilter !== afterYearFilter) {
-      console.log(`[AuctionsAPI] Filtered by year (2020+) & price: ${beforeYearFilter} -> ${afterYearFilter} vehicles`);
-    }
     
-    // Trim to requested per_page if we have more than needed
-    if (result.data.length > requestedPerPage) {
-      result.data = result.data.slice(0, requestedPerPage);
-      console.log(`[AuctionsAPI] Trimmed to ${requestedPerPage} vehicles for pagination`);
-    }
+    allVehicles.push(...filtered);
+    console.log(`[AuctionsAPI] Page ${currentPage}: fetched ${result.data.length}, filtered ${filtered.length}, total ${allVehicles.length}`);
     
-    // Update meta.total to reflect filtered count
-    // This is an approximation: we assume similar filter ratio on all pages
-    if (result.meta && beforeFilterCount > 0) {
-      const filterRatio = afterFilterCount / beforeFilterCount;
-      const estimatedTotal = Math.ceil((result.meta.total ?? 0) * filterRatio);
-      result.meta.total = Math.max(afterFilterCount, estimatedTotal);
-      console.log(`[AuctionsAPI] Updated meta.total to ${result.meta.total} (was ${result.meta.total})`);
-    }
+    // If we have enough, stop fetching
+    if (allVehicles.length >= requestedPerPage) break;
+    
+    // Otherwise, fetch next page
+    currentPage = currentPage + 1;
+    pagesFetched++;
+    const nextParams = { ...p, page: currentPage };
+    result = await apiFetch<AuctionListResponse>("/cars", nextParams, CACHE_15MIN);
+  }
+  
+  // Trim to requested per_page
+  result.data = allVehicles.slice(0, requestedPerPage);
+  
+  // Update meta.total based on actual filtered results
+  if (result.meta) {
+    // Estimate total based on filter ratio from first page
+    const firstPageRatio = allVehicles.length > 0 ? allVehicles.length / (result.data.length || 1) : 1;
+    result.meta.total = Math.ceil((result.meta.total ?? 0) * firstPageRatio);
   }
 
   // Client-side sort fallback: if sort was requested, sort the returned page
