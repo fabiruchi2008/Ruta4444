@@ -297,11 +297,11 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   // We'll filter by status.id and return only the requested per_page amount
   const requestedPerPage = rest.per_page ?? 24;
   const p: Record<string, string | number | undefined> = {
-    per_page: requestedPerPage * 2,  // Request 2x to have enough after filtering
+    per_page: requestedPerPage * 2,
     page: rest.page ?? 1,
     vehicle_type: 1,
     simple_paginate: 0,
-    exclude_expired_auctions: 1,  // Solo vehículos activos (sin fecha expirada)
+    exclude_expired_auctions: 1,
     ...rest,
   };
   // Pass sort/order to API (AuctionsAPI supports sort param)
@@ -341,9 +341,10 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
   let result = await apiFetch<AuctionListResponse>("/cars", p, CACHE_15MIN);
   let allVehicles: AuctionVehicle[] = [];
   let currentPage = Number(p.page) || 1;
-  const maxPages = 5; // Prevent infinite loops
+  const maxPages = 2; // Reduce to 2 pages max for faster response
   let pagesFetched = 0;
   
+  // Fetch up to 2 pages to get enough vehicles
   while (allVehicles.length < requestedPerPage && pagesFetched < maxPages) {
     if (!result.data || !Array.isArray(result.data)) break;
     
@@ -356,15 +357,14 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       const statusId = lot.status?.id;
       if (statusId !== 3 && statusId !== 10) return false;
       
-      // Filter 2: Year must be 2015 or later
-      const vehicleYear = vehicle.year ?? 0;
-      if (vehicleYear <= 2014) return false;
+      // Year filter removed - show all vehicles with valid status and price
       
-      // Filter 3: Must have price (bid or buy_now > 0)
+      // Filter 2: Must have price (bid or buy_now > 0)
       const hasBid = lot.bid && Number(lot.bid) > 0;
       const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
       if (!hasBid && !hasBuyNow) return false;
       
+      // Date filter removed temporarily - will add back with proper logic
       return true;
     });
     
