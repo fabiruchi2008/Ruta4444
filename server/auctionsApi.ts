@@ -381,8 +381,19 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
     result = await apiFetch<AuctionListResponse>("/cars", nextParams, CACHE_15MIN);
   }
   
+  // Deduplicate by vehicle ID to prevent React key errors
+  const seenIds = new Set<number>();
+  const dedupedVehicles: AuctionVehicle[] = [];
+  for (const vehicle of allVehicles) {
+    if (!seenIds.has(vehicle.id)) {
+      seenIds.add(vehicle.id);
+      dedupedVehicles.push(vehicle);
+    }
+  }
+  
   // Trim to requested per_page
-  result.data = allVehicles.slice(0, requestedPerPage);
+  result.data = dedupedVehicles.slice(0, requestedPerPage);
+  console.log(`[AuctionsAPI] After dedup: ${allVehicles.length} -> ${result.data.length} vehicles`);
   
   // Update meta.total based on actual filtered results
   if (result.meta) {
