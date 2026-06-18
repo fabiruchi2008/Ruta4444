@@ -407,8 +407,9 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
     
     setIsGenerating(true);
     try {
-      const precioCliente = calcData.finalPriceUSD + (gananciaN / calcData.exchangeRate);
-      const precioClienteGTQ = Math.round((calcData.finalPriceUSD + (gananciaN / calcData.exchangeRate)) * calcData.exchangeRate);
+      // Usar exactamente la misma fórmula que la UI
+      const precioClienteGTQ = Math.round((calcData.finalPriceUSD + gananciaN / calcData.exchangeRate) * calcData.exchangeRate);
+      const precioClienteUSD = calcData.finalPriceUSD + gananciaN / calcData.exchangeRate;
       
       // Generar PDF con jsPDF
       const { jsPDF } = await import("jspdf");
@@ -526,7 +527,7 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       
       doc.setFontSize(10);
       doc.setTextColor(150, 150, 150);
-      doc.text(`(USD $${fmt(Math.round(precioCliente))})`, 10, yPos);
+      doc.text(`(USD $${fmt(Math.round(precioClienteUSD))})`, 10, yPos);
       yPos += 10;
       
       // Footer
