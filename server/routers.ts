@@ -539,7 +539,7 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
     }),
 
     // Calculadora de costo real (sin ganancia) — solo para admin
-    getLotForCalc: adminProcedure
+    getLotForCalc: publicProcedure
       .input(z.object({ lot: z.string().min(3) }))
       .query(async ({ input }) => {
         const result = await searchByLot(input.lot);
@@ -557,10 +557,43 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
         const year = v.year ?? null;
         const image = primaryLot?.images?.normal?.[0] ?? primaryLot?.images?.small?.[0] ?? null;
         const title = [year, make, model].filter(Boolean).join(" ");
-        return { lot: input.lot, make, model, year, bodyType, stateCode, city, platform, auctionPrice, image, title };
+        
+        // Additional data for PDF
+        const vin = v.vin ?? null;
+        const damageMain = primaryLot?.damage?.main?.name ?? null;
+        const damageSecondary = primaryLot?.damage?.secondary?.name ?? null;
+        const condition = primaryLot?.condition?.name ?? null;
+        const odometer = primaryLot?.odometer?.mi ?? null;
+        const allImages = [
+          ...(primaryLot?.images?.normal ?? []),
+          ...(primaryLot?.images?.big ?? []),
+          ...(primaryLot?.images?.exterior ?? []),
+          ...(primaryLot?.images?.interior ?? []),
+          ...(primaryLot?.images?.downloaded ?? []),
+        ].filter(Boolean);
+        
+        return { 
+          lot: input.lot, 
+          make, 
+          model, 
+          year, 
+          bodyType, 
+          stateCode, 
+          city, 
+          platform, 
+          auctionPrice, 
+          image, 
+          title,
+          vin,
+          damageMain,
+          damageSecondary,
+          condition,
+          odometer,
+          allImages,
+        };
       }),
 
-    calculateReal: adminProcedure
+    calculateReal: publicProcedure
       .input(z.object({
         auctionPrice: z.number(),
         platform: z.enum(["copart", "iaai"]),

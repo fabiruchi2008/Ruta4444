@@ -423,6 +423,10 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPos = 10;
       
+      // ═══════════════════════════════════════════════════════════════════════════
+      // PAGE 1: HEADER + VEHICLE INFO + MAIN PHOTO
+      // ═══════════════════════════════════════════════════════════════════════════
+      
       // Logo y encabezado
       doc.setFontSize(24);
       doc.setTextColor(0, 200, 224); // Cian
@@ -447,7 +451,7 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       
       doc.setFontSize(9);
       doc.setTextColor(150, 150, 150);
-      doc.text(`VIN: ${(lotData as any).vin || "N/A"}`, 10, yPos);
+      doc.text(`VIN: ${lotData.vin || "N/A"}`, 10, yPos);
       yPos += 5;
       doc.text(`Lote: ${lotData.lot || lotQuery}`, 10, yPos);
       yPos += 5;
@@ -459,23 +463,26 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
         try {
           doc.addImage(lotData.image, "JPEG", 10, yPos, 190, 110);
           yPos += 115;
-          
-          // Nueva página si es necesario
-          if (yPos > pageHeight - 50) {
-            doc.addPage();
-            yPos = 10;
-          }
         } catch (e) {
-          // Si falla la imagen, continuar sin ella
+          console.warn("Error adding main image:", e);
         }
       }
+      
+      // Nueva página si es necesario
+      if (yPos > pageHeight - 80) {
+        doc.addPage();
+        yPos = 10;
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // VEHICLE DETAILS
+      // ═══════════════════════════════════════════════════════════════════════════
       
       // Línea separadora
       doc.setDrawColor(0, 200, 224);
       doc.line(10, yPos, pageWidth - 10, yPos);
       yPos += 5;
       
-      // Detalles del vehículo
       doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
       doc.text("Detalles del Vehículo", 10, yPos);
@@ -489,7 +496,10 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
         `Modelo: ${lotData.model}`,
         `Ubicación: ${lotData.city}, ${lotData.stateCode}`,
         `Tipo: ${lotData.bodyType || "N/A"}`,
-        `Odómetro: ${(lotData as any).odometer ? fmt((lotData as any).odometer) + " mi" : "N/A"}`,
+        `Odómetro: ${lotData.odometer ? fmt(lotData.odometer) + " millas" : "N/A"}`,
+        `Condición: ${lotData.condition || "N/A"}`,
+        `Daño Principal: ${lotData.damageMain || "N/A"}`,
+        `Daño Secundario: ${lotData.damageSecondary || "N/A"}`,
       ];
       
       details.forEach(detail => {
@@ -503,32 +513,95 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       
       yPos += 5;
       
-      // Nueva página para el precio
-      if (yPos > pageHeight - 50) {
-        doc.addPage();
-        yPos = 10;
+      // ═══════════════════════════════════════════════════════════════════════════
+      // GALLERY OF ALL PHOTOS (if available)
+      // ═══════════════════════════════════════════════════════════════════════════
+      
+      const allImages = (lotData as any).allImages || [];
+      if (allImages.length > 0) {
+        // Nueva página para la galería
+        if (yPos > pageHeight - 80) {
+          doc.addPage();
+          yPos = 10;
+        }
+        
+        // Línea separadora
+        doc.setDrawColor(0, 200, 224);
+        doc.line(10, yPos, pageWidth - 10, yPos);
+        yPos += 5;
+        
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        doc.text("Galería de Fotos", 10, yPos);
+        yPos += 8;
+        
+        // Grid de fotos: 2 columnas, 3 filas por página
+        const photoWidth = 85; // mm
+        const photoHeight = 60; // mm
+        const photoGapX = 10; // mm entre columnas
+        const photoGapY = 5; // mm entre filas
+        const photosPerPage = 6; // 2 cols x 3 rows
+        
+        for (let i = 0; i < allImages.length; i++) {
+          const imgUrl = allImages[i];
+          if (!imgUrl) continue;
+          
+          // Calcular posición en la grid
+          const indexInPage = i % photosPerPage;
+          const col = indexInPage % 2;
+          const row = Math.floor(indexInPage / 2);
+          const xPos = 10 + col * (photoWidth + photoGapX);
+          const currentYPos = yPos + row * (photoHeight + photoGapY);
+          
+          // Si llegamos al final de la página, agregar nueva página
+          if (indexInPage === 0 && i > 0) {
+            doc.addPage();
+            yPos = 10;
+          }
+          
+          try {
+            doc.addImage(imgUrl, "JPEG", xPos, currentYPos, photoWidth, photoHeight);
+          } catch (e) {
+            console.warn(`Error adding image ${i}:`, e);
+          }
+        }
+        
+        // Mover yPos después de la galería
+        yPos = yPos + Math.ceil(Math.min(allImages.length, photosPerPage) / 2) * (photoHeight + photoGapY) + 10;
       }
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // FINAL PAGE: PRICE
+      // ═══════════════════════════════════════════════════════════════════════════
+      
+      // Nueva página para el precio
+      doc.addPage();
+      yPos = 20;
       
       // Línea separadora
       doc.setDrawColor(0, 200, 224);
       doc.line(10, yPos, pageWidth - 10, yPos);
-      yPos += 5;
+      yPos += 15;
       
       // Precio total
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setTextColor(0, 200, 224);
-      doc.text("PRECIO TOTAL AL CLIENTE", 10, yPos);
-      yPos += 10;
+      doc.text("PRECIO TOTAL AL CLIENTE", pageWidth / 2, yPos, { align: "center" });
+      yPos += 20;
       
-      doc.setFontSize(20);
+      doc.setFontSize(32);
       doc.setTextColor(249, 115, 22); // Naranja
-      doc.text(`Q${fmt(Math.round(precioClienteGTQ))}`, 10, yPos);
-      yPos += 10;
+      doc.text(`Q${fmt(Math.round(precioClienteGTQ))}`, pageWidth / 2, yPos, { align: "center" });
+      yPos += 15;
       
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setTextColor(150, 150, 150);
-      doc.text(`(USD $${fmt(Math.round(precioClienteUSD))})`, 10, yPos);
-      yPos += 10;
+      doc.text(`(USD $${fmt(Math.round(precioClienteUSD))})`, pageWidth / 2, yPos, { align: "center" });
+      yPos += 20;
+      
+      // Línea separadora
+      doc.setDrawColor(0, 200, 224);
+      doc.line(10, yPos, pageWidth - 10, yPos);
       
       // Footer
       doc.setFontSize(8);
