@@ -409,7 +409,6 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
     try {
       // Usar exactamente la misma fórmula que la UI
       const precioClienteGTQ = Math.round((calcData.finalPriceUSD + gananciaN / calcData.exchangeRate) * calcData.exchangeRate);
-      const precioClienteUSD = calcData.finalPriceUSD + gananciaN / calcData.exchangeRate;
       
       // Generar PDF con jsPDF
       const { jsPDF } = await import("jspdf");
@@ -421,197 +420,145 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      let yPos = 10;
       const LOGO_URL = "/manus-storage/ruta-cars-logo-v2_407315c0.png";
+      const margin = 12;
+      let yPos = margin;
       
       // ═══════════════════════════════════════════════════════════════════════════
-      // PAGE 1: HEADER + VEHICLE INFO + MAIN PHOTO
+      // HEADER: Logo + Title (Compact)
       // ═══════════════════════════════════════════════════════════════════════════
       
-      // Logo y encabezado
       try {
-        doc.addImage(LOGO_URL, "PNG", pageWidth / 2 - 15, yPos, 30, 30);
-        yPos += 35;
+        doc.addImage(LOGO_URL, "PNG", margin, yPos, 14, 14);
       } catch (e) {
         console.warn("Error adding logo:", e);
-        yPos += 10;
       }
       
-      doc.setFontSize(24);
-      doc.setTextColor(0, 200, 224); // Cian
-      doc.text("RUTA CARS GT", pageWidth / 2, yPos, { align: "center" });
-      yPos += 8;
+      doc.setFontSize(16);
+      doc.setTextColor(0, 200, 224);
+      doc.text("RUTA CARS GT", margin + 18, yPos + 4);
       
-      doc.setFontSize(10);
+      doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
-      doc.text("Cotización de Importación", pageWidth / 2, yPos, { align: "center" });
-      yPos += 10;
+      doc.text("Cotización de Importación", margin + 18, yPos + 10);
+      
+      yPos += 18;
       
       // Línea separadora
       doc.setDrawColor(0, 200, 224);
-      doc.line(10, yPos, pageWidth - 10, yPos);
-      yPos += 5;
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 3;
       
-      // Información del vehículo
-      doc.setFontSize(12);
+      // ═══════════════════════════════════════════════════════════════════════════
+      // LAYOUT: 2 COLUMNAS (Izq: Info, Der: Foto)
+      // ═══════════════════════════════════════════════════════════════════════════
+      
+      const leftColWidth = 80;
+      const rightColWidth = pageWidth - margin * 2 - leftColWidth - 2;
+      
+      // COLUMNA IZQUIERDA: Información compacta
+      doc.setFontSize(10);
       doc.setTextColor(255, 255, 255);
-      doc.text(`${lotData.year} ${lotData.make} ${lotData.model}`, 10, yPos);
-      yPos += 8;
+      doc.text(`${lotData.year} ${lotData.make} ${lotData.model}`, margin, yPos);
+      yPos += 4;
       
-      doc.setFontSize(9);
+      doc.setFontSize(7.5);
       doc.setTextColor(150, 150, 150);
-      doc.text(`VIN: ${lotData.vin || "N/A"}`, 10, yPos);
-      yPos += 5;
-      doc.text(`Lote: ${lotData.lot || lotQuery}`, 10, yPos);
-      yPos += 5;
-      doc.text(`Plataforma: ${lotData.platform?.toUpperCase() || "N/A"}`, 10, yPos);
-      yPos += 8;
+      const infoLines = [
+        `VIN: ${lotData.vin || "—"}`,
+        `Lote: ${lotData.lot || lotQuery}`,
+        `Plataforma: ${lotData.platform?.toUpperCase() || "—"}`,
+        `Ubicación: ${lotData.city}, ${lotData.stateCode}`,
+        `Tipo: ${lotData.bodyType || "—"}`,
+        `Odómetro: ${lotData.odometer ? fmt(lotData.odometer) + " mi" : "—"}`,
+        `Condición: ${lotData.condition || "—"}`,
+        `Daño: ${lotData.damageMain || "—"}`,
+      ];
       
-      // Foto principal del vehículo
+      const leftColStartY = yPos;
+      infoLines.forEach((line) => {
+        doc.text(line, margin, yPos);
+        yPos += 3;
+      });
+      
+      // COLUMNA DERECHA: Foto principal (compacta)
+      const photoX = margin + leftColWidth + 2;
+      const photoY = leftColStartY - 4;
+      const photoWidth = rightColWidth;
+      const photoHeight = 35;
+      
       if (lotData.image) {
         try {
-          doc.addImage(lotData.image, "JPEG", 10, yPos, 190, 110);
-          yPos += 115;
+          doc.addImage(lotData.image, "JPEG", photoX, photoY, photoWidth, photoHeight);
         } catch (e) {
           console.warn("Error adding main image:", e);
         }
       }
       
-      // Nueva página si es necesario
-      if (yPos > pageHeight - 80) {
-        doc.addPage();
-        yPos = 10;
-      }
+      yPos = Math.max(yPos, photoY + photoHeight + 2);
+      yPos += 2;
       
       // ═══════════════════════════════════════════════════════════════════════════
-      // VEHICLE DETAILS
-      // ═══════════════════════════════════════════════════════════════════════════
-      
-      // Línea separadora
-      doc.setDrawColor(0, 200, 224);
-      doc.line(10, yPos, pageWidth - 10, yPos);
-      yPos += 5;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(255, 255, 255);
-      doc.text("Detalles del Vehículo", 10, yPos);
-      yPos += 6;
-      
-      doc.setFontSize(9);
-      doc.setTextColor(150, 150, 150);
-      const details = [
-        `Año: ${lotData.year}`,
-        `Marca: ${lotData.make}`,
-        `Modelo: ${lotData.model}`,
-        `Ubicación: ${lotData.city}, ${lotData.stateCode}`,
-        `Tipo: ${lotData.bodyType || "N/A"}`,
-        `Odómetro: ${lotData.odometer ? fmt(lotData.odometer) + " millas" : "N/A"}`,
-        `Condición: ${lotData.condition || "N/A"}`,
-        `Daño Principal: ${lotData.damageMain || "N/A"}`,
-        `Daño Secundario: ${lotData.damageSecondary || "N/A"}`,
-      ];
-      
-      details.forEach(detail => {
-        if (yPos > pageHeight - 30) {
-          doc.addPage();
-          yPos = 10;
-        }
-        doc.text(detail, 10, yPos);
-        yPos += 4;
-      });
-      
-      yPos += 5;
-      
-      // ═══════════════════════════════════════════════════════════════════════════
-      // GALLERY OF ALL PHOTOS (if available)
+      // MINI GALLERY: Thumbnails compactos (3 columnas)
       // ═══════════════════════════════════════════════════════════════════════════
       
       const allImages = (lotData as any).allImages || [];
-      if (allImages.length > 0) {
-        // Nueva página para la galería
-        if (yPos > pageHeight - 80) {
-          doc.addPage();
-          yPos = 10;
-        }
-        
-        // Línea separadora
+      if (allImages.length > 0 && yPos < pageHeight - 40) {
         doc.setDrawColor(0, 200, 224);
-        doc.line(10, yPos, pageWidth - 10, yPos);
-        yPos += 5;
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 2;
         
-        doc.setFontSize(10);
-        doc.setTextColor(255, 255, 255);
-        doc.text("Galería de Fotos", 10, yPos);
-        yPos += 8;
+        doc.setFontSize(7);
+        doc.setTextColor(0, 200, 224);
+        doc.text("Galería", margin, yPos);
+        yPos += 2.5;
         
-        // Grid de fotos: 2 columnas, 3 filas por página
-        const photoWidth = 85; // mm
-        const photoHeight = 60; // mm
-        const photoGapX = 10; // mm entre columnas
-        const photoGapY = 5; // mm entre filas
-        const photosPerPage = 6; // 2 cols x 3 rows
+        const thumbWidth = (pageWidth - margin * 2 - 4) / 3;
+        const thumbHeight = 16;
+        const maxThumbs = 6;
         
-        for (let i = 0; i < allImages.length; i++) {
+        for (let i = 0; i < Math.min(allImages.length, maxThumbs); i++) {
           const imgUrl = allImages[i];
           if (!imgUrl) continue;
           
-          // Calcular posición en la grid
-          const indexInPage = i % photosPerPage;
-          const col = indexInPage % 2;
-          const row = Math.floor(indexInPage / 2);
-          const xPos = 10 + col * (photoWidth + photoGapX);
-          const currentYPos = yPos + row * (photoHeight + photoGapY);
-          
-          // Si llegamos al final de la página, agregar nueva página
-          if (indexInPage === 0 && i > 0) {
-            doc.addPage();
-            yPos = 10;
-          }
+          const col = i % 3;
+          const row = Math.floor(i / 3);
+          const xPos = margin + col * (thumbWidth + 1.5);
+          const currentYPos = yPos + row * (thumbHeight + 1);
           
           try {
-            doc.addImage(imgUrl, "JPEG", xPos, currentYPos, photoWidth, photoHeight);
+            doc.addImage(imgUrl, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
           } catch (e) {
-            console.warn(`Error adding image ${i}:`, e);
+            console.warn(`Error adding thumbnail ${i}:`, e);
           }
         }
         
-        // Mover yPos después de la galería
-        yPos = yPos + Math.ceil(Math.min(allImages.length, photosPerPage) / 2) * (photoHeight + photoGapY) + 10;
+        yPos += (Math.ceil(Math.min(allImages.length, maxThumbs) / 3)) * (thumbHeight + 1) + 2;
       }
       
       // ═══════════════════════════════════════════════════════════════════════════
-      // FINAL PAGE: PRICE
+      // FINAL PRICE SECTION (Bottom of page)
       // ═══════════════════════════════════════════════════════════════════════════
       
-      // Nueva página para el precio
-      doc.addPage();
-      yPos = 20;
+      yPos = Math.max(yPos, pageHeight - 28);
       
-      // Línea separadora
       doc.setDrawColor(0, 200, 224);
-      doc.line(10, yPos, pageWidth - 10, yPos);
-      yPos += 15;
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 3;
       
-      // Precio total
-      doc.setFontSize(16);
+      doc.setFontSize(8);
       doc.setTextColor(0, 200, 224);
       doc.text("PRECIO TOTAL AL CLIENTE", pageWidth / 2, yPos, { align: "center" });
-      yPos += 20;
+      yPos += 5;
       
-      doc.setFontSize(32);
-      doc.setTextColor(249, 115, 22); // Naranja
+      doc.setFontSize(20);
+      doc.setTextColor(249, 115, 22);
       doc.text(`Q${fmt(Math.round(precioClienteGTQ))}`, pageWidth / 2, yPos, { align: "center" });
-      yPos += 20;
-      
-      // Línea separadora
-      doc.setDrawColor(0, 200, 224);
-      doc.line(10, yPos, pageWidth - 10, yPos);
       
       // Footer
-      doc.setFontSize(8);
+      doc.setFontSize(6);
       doc.setTextColor(100, 100, 100);
-      doc.text("Ruta Cars GT - Importación de Vehículos USA a Guatemala", pageWidth / 2, pageHeight - 10, { align: "center" });
-      doc.text(`Generado: ${new Date().toLocaleDateString("es-GT")}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+      doc.text("Ruta Cars GT | Importación de Vehículos USA a Guatemala", pageWidth / 2, pageHeight - 2, { align: "center" });
       
       // Descargar PDF
       doc.save(`Cotizacion_${lotData.year}_${lotData.make}_${lotData.model}.pdf`);
