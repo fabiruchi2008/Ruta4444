@@ -422,12 +422,21 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPos = 10;
+      const LOGO_URL = "/manus-storage/ruta-cars-logo-v2_407315c0.png";
       
       // ═══════════════════════════════════════════════════════════════════════════
       // PAGE 1: HEADER + VEHICLE INFO + MAIN PHOTO
       // ═══════════════════════════════════════════════════════════════════════════
       
       // Logo y encabezado
+      try {
+        doc.addImage(LOGO_URL, "PNG", pageWidth / 2 - 15, yPos, 30, 30);
+        yPos += 35;
+      } catch (e) {
+        console.warn("Error adding logo:", e);
+        yPos += 10;
+      }
+      
       doc.setFontSize(24);
       doc.setTextColor(0, 200, 224); // Cian
       doc.text("RUTA CARS GT", pageWidth / 2, yPos, { align: "center" });
@@ -592,11 +601,6 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       doc.setFontSize(32);
       doc.setTextColor(249, 115, 22); // Naranja
       doc.text(`Q${fmt(Math.round(precioClienteGTQ))}`, pageWidth / 2, yPos, { align: "center" });
-      yPos += 15;
-      
-      doc.setFontSize(12);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`(USD $${fmt(Math.round(precioClienteUSD))})`, pageWidth / 2, yPos, { align: "center" });
       yPos += 20;
       
       // Línea separadora

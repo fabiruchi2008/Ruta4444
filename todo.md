@@ -199,10 +199,10 @@
 
 ## Client Quote Feature (Cotización Cliente) (v13)
 
-- [ ] Create admin UI: "Cotización Cliente" section in AdminCalculadora
-- [ ] Input fields: Lot number + Desired profit margin (GTQ)
-- [ ] Fetch lot details from API (photos, vehicle info, VIN, odómetro, location, damage, condition)
-- [ ] Calculate total price in GTQ using calculator logic
-- [ ] Generate PDF with: vehicle photos, details, and total price (no cost breakdown)
-- [ ] PDF download functionality
-- [ ] Test with multiple vehicles
+- [x] Create admin UI: "Cotización Cliente" section in AdminCalculadora
+- [x] Input fields: Lot number + Desired profit margin (GTQ)
+- [x] Fetch lot details from API (photos, vehicle info, VIN, odómetro, location, damage, condition)
+- [x] Calculate total price in GTQ using calculator logic
+- [x] Generate PDF with: vehicle photos, details, and total price (no cost breakdown)
+- [x] PDF download functionality
+- [x] Test with multiple vehicles
