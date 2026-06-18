@@ -572,6 +572,42 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
           ...(primaryLot?.images?.downloaded ?? []),
         ].filter(Boolean);
         
+        // Convert images to base64 for PDF embedding with timeout
+        const convertImageToBase64 = async (imageUrl: string, timeoutMs: number = 10000): Promise<string | null> => {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            
+            const response = await fetch(imageUrl, {
+              signal: controller.signal,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) return null;
+            const buffer = await response.arrayBuffer();
+            const base64 = Buffer.from(buffer).toString('base64');
+            return `data:image/jpeg;base64,${base64}`;
+          } catch (e) {
+            console.warn(`Failed to convert image ${imageUrl}:`, e);
+            return null;
+          }
+        };
+        
+        // Convert main image (with longer timeout for quality)
+        let imageBase64 = null;
+        if (image) {
+          imageBase64 = await convertImageToBase64(image, 8000);
+        }
+        
+        // Convert all images in parallel with longer timeout
+        const allImagesBase64 = await Promise.all(
+          allImages.slice(0, 6).map((img) => convertImageToBase64(img, 6000))
+        );
+        const allImagesFiltered = allImagesBase64.filter(Boolean) as string[];
+        
         return { 
           lot: input.lot, 
           make, 
@@ -582,14 +618,14 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
           city, 
           platform, 
           auctionPrice, 
-          image, 
+          image: imageBase64 || image, // Use base64 if available, fallback to URL
           title,
           vin,
           damageMain,
           damageSecondary,
           condition,
           odometer,
-          allImages,
+          allImages: allImagesFiltered.length > 0 ? allImagesFiltered : allImages,
         };
       }),
 

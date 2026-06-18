@@ -489,7 +489,31 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       
       if (lotData.image) {
         try {
-          doc.addImage(lotData.image, "JPEG", photoX, photoY, photoWidth, photoHeight);
+          // Try to load the image with CORS handling
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const imgData = canvas.toDataURL('image/jpeg');
+              if (imgData) {
+                doc.addImage(imgData as string, "JPEG", photoX, photoY, photoWidth, photoHeight);
+              }
+            }
+          };
+          img.src = lotData.image;
+          // Fallback: try adding directly if canvas method fails
+          setTimeout(() => {
+            try {
+              doc.addImage(lotData.image as string, "JPEG", photoX, photoY, photoWidth, photoHeight);
+            } catch (e2) {
+              console.warn("Fallback: Could not add main image", e2);
+            }
+          }, 100);
         } catch (e) {
           console.warn("Error adding main image:", e);
         }
@@ -527,7 +551,31 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
           const currentYPos = yPos + row * (thumbHeight + 1);
           
           try {
-            doc.addImage(imgUrl, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
+            // Try to load thumbnail with CORS handling
+            const thumbImg = new Image();
+            thumbImg.crossOrigin = "anonymous";
+            thumbImg.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = thumbImg.width;
+              canvas.height = thumbImg.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(thumbImg, 0, 0);
+                const thumbData = canvas.toDataURL('image/jpeg');
+                if (thumbData) {
+                  doc.addImage(thumbData as string, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
+                }
+              }
+            };
+            thumbImg.src = imgUrl;
+            // Fallback: try adding directly
+            setTimeout(() => {
+              try {
+                doc.addImage(imgUrl as string, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
+              } catch (e2) {
+                console.warn(`Fallback: Could not add thumbnail ${i}`, e2);
+              }
+            }, 50);
           } catch (e) {
             console.warn(`Error adding thumbnail ${i}:`, e);
           }
