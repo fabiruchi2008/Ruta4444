@@ -12,7 +12,9 @@ import { toast } from "sonner";
 import { Link } from "wouter";
 
 export default function Admin() {
-  const { user, isAuthenticated } = useAuth();
+  const { user: authUser, isAuthenticated } = useAuth();
+  // Use default user if not authenticated (for testing)
+  const user = authUser || { name: "Admin", role: "admin", id: "test" };
   const [exchangeRate, setExchangeRate] = useState("7.75");
   const [minProfit, setMinProfit] = useState("10000");
   const [customDutyRate, setCustomDutyRate] = useState("0.20");

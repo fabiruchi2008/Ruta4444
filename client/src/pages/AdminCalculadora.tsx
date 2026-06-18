@@ -407,8 +407,8 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
     
     setIsGenerating(true);
     try {
-      const precioCliente = calcData.finalPriceUSD + gananciaN;
-      const precioClienteGTQ = Math.round(precioCliente * calcData.exchangeRate);
+      const precioCliente = calcData.finalPriceUSD + (gananciaN / calcData.exchangeRate);
+      const precioClienteGTQ = Math.round((calcData.finalPriceUSD + (gananciaN / calcData.exchangeRate)) * calcData.exchangeRate);
       
       // Generar PDF con jsPDF
       const { jsPDF } = await import("jspdf");
@@ -453,11 +453,17 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       doc.text(`Plataforma: ${lotData.platform?.toUpperCase() || "N/A"}`, 10, yPos);
       yPos += 8;
       
-      // Foto del vehículo si existe
+      // Foto principal del vehículo
       if (lotData.image) {
         try {
-          doc.addImage(lotData.image, "JPEG", 10, yPos, 190, 100);
-          yPos += 105;
+          doc.addImage(lotData.image, "JPEG", 10, yPos, 190, 110);
+          yPos += 115;
+          
+          // Nueva página si es necesario
+          if (yPos > pageHeight - 50) {
+            doc.addPage();
+            yPos = 10;
+          }
         } catch (e) {
           // Si falla la imagen, continuar sin ella
         }
@@ -482,14 +488,25 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
         `Modelo: ${lotData.model}`,
         `Ubicación: ${lotData.city}, ${lotData.stateCode}`,
         `Tipo: ${lotData.bodyType || "N/A"}`,
+        `Odómetro: ${(lotData as any).odometer ? fmt((lotData as any).odometer) + " mi" : "N/A"}`,
       ];
       
       details.forEach(detail => {
+        if (yPos > pageHeight - 30) {
+          doc.addPage();
+          yPos = 10;
+        }
         doc.text(detail, 10, yPos);
         yPos += 4;
       });
       
       yPos += 5;
+      
+      // Nueva página para el precio
+      if (yPos > pageHeight - 50) {
+        doc.addPage();
+        yPos = 10;
+      }
       
       // Línea separadora
       doc.setDrawColor(0, 200, 224);
