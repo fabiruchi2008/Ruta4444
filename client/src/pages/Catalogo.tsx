@@ -704,12 +704,22 @@ export default function Catalogo() {
   const searchType = detectSearchType(debouncedSearch);
 
   const queryInput = useMemo(() => {
+    // Calcular fecha minima: hoy + 2 dias
+    const today = new Date();
+    const minDate = new Date(today);
+    minDate.setDate(minDate.getDate() + 2);
+    const minDateStr = minDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
     return {
       ...debouncedFilters,
       status: 0,
-      // SIEMPRE excluir subastas expiradas (vehículos ya vendidos hace años)
+      // SIEMPRE excluir subastas expiradas (vehiculos ya vendidos hace anos)
       exclude_expired_auctions: 1,
-      // Si el usuario no eligió un orden manual, ordenar por fecha de subasta ascendente
+      // SIEMPRE filtrar por "Comprar Ahora" (buy_now > 0)
+      has_buy_now: 1,
+      // SIEMPRE filtrar por subastas de 2 dias en adelante
+      sale_date_from: minDateStr,
+      // Si el usuario no eligio un orden manual, ordenar por fecha de subasta ascendente
       sort: debouncedFilters.sort ?? "sale_date",
       order: debouncedFilters.order ?? "asc",
     };

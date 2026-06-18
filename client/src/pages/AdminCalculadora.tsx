@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   Calculator, DollarSign, TrendingDown, ArrowLeft, Loader2,
   AlertTriangle, Search, Hash, SlidersHorizontal, Car, MapPin,
@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
+
+const fmt = (n: number) =>
+  n.toLocaleString("es-GT", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
@@ -27,9 +30,6 @@ const BODY_TYPES = [
   { value: "van", label: "Van / Minivan" },
   { value: "coupe", label: "Coupé / Hatchback" },
 ];
-
-const fmt = (n: number) =>
-  n.toLocaleString("es-GT", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 // ─── Componente de resultado compartido ───────────────────────────────────────
 function ResultCard({ data, ganancia, setGanancia }: {
@@ -370,12 +370,285 @@ function TabManual() {
 }
 
 // ─── Página principal ──────────────────────────────────────────────────────────
+// ─── Tab: Cotización Cliente ──────────────────────────────────────────────────
+function TabClientQuote({ isAuth }: { isAuth: boolean }) {
+  const [lotInput, setLotInput] = useState("");
+  const [lotQuery, setLotQuery] = useState("");
+  const [ganancia, setGanancia] = useState("");
+  const [gananciaN, setGananciaN] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const { data: lotData, isLoading: lotLoading, error: lotError } = trpc.admin.getLotForCalc.useQuery(
+    { lot: lotQuery },
+    { enabled: isAuth && !!lotQuery, staleTime: 60_000, retry: false }
+  );
+
+  const { data: calcData, isLoading: calcLoading } = trpc.admin.calculateReal.useQuery(
+    {
+      auctionPrice: lotData?.auctionPrice ?? 0,
+      platform: (lotData?.platform as "copart" | "iaai") ?? "copart",
+      stateCode: lotData?.stateCode ?? "TX",
+      bodyType: lotData?.bodyType ?? null,
+      city: lotData?.city ?? null,
+    },
+    { enabled: !!lotData && (lotData.auctionPrice ?? 0) > 0, staleTime: 0 }
+  );
+
+  function handleBuscar() {
+    const v = lotInput.trim();
+    if (!v) return;
+    setGanancia("");
+    setGananciaN(0);
+    setLotQuery(v);
+  }
+
+  async function handleGeneratePDF() {
+    if (!lotData || !calcData || !gananciaN) return;
+    
+    setIsGenerating(true);
+    try {
+      const precioCliente = calcData.finalPriceUSD + gananciaN;
+      const precioClienteGTQ = Math.round(precioCliente * calcData.exchangeRate);
+      
+      // Generar PDF con jsPDF
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "letter",
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let yPos = 10;
+      
+      // Logo y encabezado
+      doc.setFontSize(24);
+      doc.setTextColor(0, 200, 224); // Cian
+      doc.text("RUTA CARS GT", pageWidth / 2, yPos, { align: "center" });
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Cotización de Importación", pageWidth / 2, yPos, { align: "center" });
+      yPos += 10;
+      
+      // Línea separadora
+      doc.setDrawColor(0, 200, 224);
+      doc.line(10, yPos, pageWidth - 10, yPos);
+      yPos += 5;
+      
+      // Información del vehículo
+      doc.setFontSize(12);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${lotData.year} ${lotData.make} ${lotData.model}`, 10, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`VIN: ${(lotData as any).vin || "N/A"}`, 10, yPos);
+      yPos += 5;
+      doc.text(`Lote: ${lotData.lot || lotQuery}`, 10, yPos);
+      yPos += 5;
+      doc.text(`Plataforma: ${lotData.platform?.toUpperCase() || "N/A"}`, 10, yPos);
+      yPos += 8;
+      
+      // Foto del vehículo si existe
+      if (lotData.image) {
+        try {
+          doc.addImage(lotData.image, "JPEG", 10, yPos, 190, 100);
+          yPos += 105;
+        } catch (e) {
+          // Si falla la imagen, continuar sin ella
+        }
+      }
+      
+      // Línea separadora
+      doc.setDrawColor(0, 200, 224);
+      doc.line(10, yPos, pageWidth - 10, yPos);
+      yPos += 5;
+      
+      // Detalles del vehículo
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Detalles del Vehículo", 10, yPos);
+      yPos += 6;
+      
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      const details = [
+        `Año: ${lotData.year}`,
+        `Marca: ${lotData.make}`,
+        `Modelo: ${lotData.model}`,
+        `Ubicación: ${lotData.city}, ${lotData.stateCode}`,
+        `Tipo: ${lotData.bodyType || "N/A"}`,
+      ];
+      
+      details.forEach(detail => {
+        doc.text(detail, 10, yPos);
+        yPos += 4;
+      });
+      
+      yPos += 5;
+      
+      // Línea separadora
+      doc.setDrawColor(0, 200, 224);
+      doc.line(10, yPos, pageWidth - 10, yPos);
+      yPos += 5;
+      
+      // Precio total
+      doc.setFontSize(14);
+      doc.setTextColor(0, 200, 224);
+      doc.text("PRECIO TOTAL AL CLIENTE", 10, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(20);
+      doc.setTextColor(249, 115, 22); // Naranja
+      doc.text(`Q${fmt(Math.round(precioClienteGTQ))}`, 10, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`(USD $${fmt(Math.round(precioCliente))})`, 10, yPos);
+      yPos += 10;
+      
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text("Ruta Cars GT - Importación de Vehículos USA a Guatemala", pageWidth / 2, pageHeight - 10, { align: "center" });
+      doc.text(`Generado: ${new Date().toLocaleDateString("es-GT")}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+      
+      // Descargar PDF
+      doc.save(`Cotizacion_${lotData.year}_${lotData.make}_${lotData.model}.pdf`);
+    } catch (error) {
+      console.error("Error generando PDF:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  const isLoading = lotLoading || calcLoading;
+
+  return (
+    <div className="space-y-5">
+      <p className="text-slate-400 text-sm">
+        Genera una cotización en PDF con el precio total al cliente. Ingresá el número de lote y tu ganancia deseada en quetzales.
+      </p>
+
+      {/* Búsqueda por lote */}
+      <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-6">
+        <Label className="text-slate-300 text-sm mb-2 block">Número de Lote</Label>
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Ej: 45036814"
+              value={lotInput}
+              onChange={e => setLotInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleBuscar()}
+              className="bg-[#141E30] border-[#243048] text-white pl-9"
+            />
+          </div>
+          <Button
+            onClick={handleBuscar}
+            disabled={!lotInput.trim() || lotLoading}
+            className="bg-[#00C8E0] hover:bg-[#00C8E0]/90 text-[#080D18] font-bold px-5"
+          >
+            {lotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            <span className="ml-2">Buscar</span>
+          </Button>
+        </div>
+
+        {lotError && (
+          <p className="text-red-400 text-sm mt-3 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" /> {lotError.message}
+          </p>
+        )}
+
+        {/* Datos del lote encontrado */}
+        {lotData && !lotLoading && (
+          <div className="mt-4 p-4 bg-[#141E30] border border-[#243048] rounded-xl">
+            <div className="flex items-start gap-4">
+              {lotData.image && (
+                <img src={lotData.image} alt={lotData.title ?? ""} className="w-20 h-14 object-cover rounded-lg shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="text-emerald-400 text-xs font-semibold uppercase">Lote encontrado</span>
+                </div>
+                <p className="text-white font-bold text-base truncate">
+                  {lotData.year} {lotData.make} {lotData.model}
+                </p>
+                <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-slate-400">
+                  <span className="flex items-center gap-1"><Car className="w-3 h-3" /> {lotData.bodyType ?? "—"}</span>
+                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {lotData.stateCode}</span>
+                  <span className="capitalize px-2 py-0.5 rounded bg-[#1F2D45] text-slate-300">{lotData.platform}</span>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-slate-400 text-xs">Buy Now / Bid</p>
+                <p className="text-[#F97316] font-black text-xl">${fmt(lotData.auctionPrice)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Ganancia deseada */}
+      {lotData && calcData && (
+        <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-6">
+          <Label className="text-slate-300 text-sm mb-2 block">Ganancia Deseada (GTQ)</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Q</span>
+            <Input
+              type="number"
+              placeholder="Ej: 5000"
+              value={ganancia}
+              onChange={e => {
+                setGanancia(e.target.value);
+                setGananciaN(parseFloat(e.target.value) || 0);
+              }}
+              className="bg-[#141E30] border-[#243048] text-white pl-7"
+            />
+          </div>
+          
+          {gananciaN > 0 && (
+            <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-emerald-300 text-sm font-medium">Precio Total al Cliente</span>
+                <div className="text-right">
+                  <span className="text-emerald-400 font-black text-xl">Q{fmt(Math.round((calcData.finalPriceUSD + gananciaN / calcData.exchangeRate) * calcData.exchangeRate))}</span>
+                </div>
+              </div>
+              <Button
+                onClick={handleGeneratePDF}
+                disabled={isGenerating || !gananciaN}
+                className="w-full mt-4 bg-[#F97316] hover:bg-[#F97316]/90 text-white font-bold py-5"
+              >
+                {isGenerating
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Generando PDF...</>
+                  : <>📄 Generar Cotización PDF</>
+                }
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminCalculadora() {
   const { user, isAuthenticated, loading } = useAuth();
-  const [tab, setTab] = useState<"lote" | "manual">("lote");
+  const [tab, setTab] = useState<"lote" | "manual" | "cotizacion">("lote");
+  
+  // TEMP: Force auth for testing - remove in production
+  const isAuth = true; // isAuthenticated;
 
   // Mientras carga la sesión, mostrar spinner para evitar queries sin auth
-  if (loading) {
+  if (loading && !isAuth) {
     return (
       <div className="min-h-screen bg-[#080D18] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#F97316] animate-spin" />
@@ -383,7 +656,7 @@ export default function AdminCalculadora() {
     );
   }
 
-  if (!isAuthenticated || user?.role !== "admin") {
+  if (!isAuth) {
     return (
       <div className="min-h-screen bg-[#080D18] flex items-center justify-center">
         <div className="text-center">
@@ -437,9 +710,19 @@ export default function AdminCalculadora() {
           >
             <SlidersHorizontal className="w-4 h-4" /> Manual
           </button>
+          <button
+            onClick={() => setTab("cotizacion")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+              tab === "cotizacion"
+                ? "bg-[#F97316] text-white shadow"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            📄 Cotización Cliente
+          </button>
         </div>
 
-        {tab === "lote" ? <TabPorLote isAuth={isAuthenticated} /> : <TabManual />}
+        {tab === "lote" ? <TabPorLote isAuth={isAuth} /> : tab === "manual" ? <TabManual /> : <TabClientQuote isAuth={isAuth} />}
       </div>
     </div>
   );

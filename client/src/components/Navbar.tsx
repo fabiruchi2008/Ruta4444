@@ -68,13 +68,7 @@ export default function Navbar() {
 
           {/* CTA + Auth */}
           <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated && user?.role === "admin" && (
-              <Link href="/admin">
-                <Button variant="outline" size="sm" className="border-[#243048] text-slate-300 hover:text-white hover:border-[#00C8E0]/50">
-                  Admin
-                </Button>
-              </Link>
-            )}
+            {/* Admin link removed - only accessible via /admin URL */}
             <Link href="/catalogo">
               <Button
                 size="sm"
@@ -120,11 +114,7 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              {isAuthenticated && user?.role === "admin" && (
-                <Link href="/admin" className="px-4 py-3 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5">
-                  Panel Admin
-                </Link>
-              )}
+              {/* Admin link removed - only accessible via /admin URL */}
               <div className="pt-2 border-t border-[#243048]/40 mt-2">
                 <Link href="/catalogo" className="block">
                   <Button className="w-full bg-[#00C8E0] hover:bg-[#0099ad] text-[#080D18] font-semibold">

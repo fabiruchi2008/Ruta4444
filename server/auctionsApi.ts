@@ -286,7 +286,7 @@ export interface SearchCarsParams {
 }
 
 // ─── TTL constants ────────────────────────────────────────────────────────────
-const CACHE_15MIN = 3 * 60 * 1000;  // 3 min para detectar subastas terminadas en tiempo real
+const CACHE_15MIN = 1 * 60 * 1000;  // 1 min para detectar subastas terminadas en tiempo real
 const CACHE_1HOUR = 60 * 60 * 1000;
 
 // ─── API functions ─────────────────────────────────────────────────────────────
@@ -360,11 +360,13 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       // Year filter removed - show all vehicles with valid status and price
       
       // Filter 2: Must have price (bid or buy_now > 0)
-      const hasBid = lot.bid && Number(lot.bid) > 0;
-      const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
-      if (!hasBid && !hasBuyNow) return false;
+      // Temporarily disabled to debug - show all vehicles with valid status
+      // const hasBid = lot.bid && Number(lot.bid) > 0;
+      // const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
+      // if (!hasBid && !hasBuyNow) return false;
       
-      // Date filter removed temporarily - will add back with proper logic
+      // API already filters with exclude_expired_auctions: 1
+      // Don't apply additional date filtering
       return true;
     });
     

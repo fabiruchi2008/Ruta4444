@@ -185,3 +185,24 @@
 - [x] Calculadora interna admin: tab "Por Número de Lote" (carga datos automáticos) + tab "Manual"
 - [x] Simulador de ganancia en calculadora admin (campo para ingresar ganancia y ver precio al cliente)
 - [x] Endpoint admin.getLotForCalc: busca lote en AuctionsAPI y retorna datos para calculadora
+
+## Catalog Data Staleness Issues (v12)
+
+- [ ] Fix: Catalog showing expired auctions (2019 Dodge Charger from 3 months ago)
+- [ ] Fix: Implement cache invalidation for expired auctions
+- [ ] Fix: Ensure API returns only active/current auctions with exclude_expired_auctions=1
+- [ ] Feature: Implement periodic data refresh mechanism (hourly/daily)
+- [ ] Feature: Create vehicle search tool with budget calculator
+- [ ] Feature: Filter vehicles by viability (price ≤ 40,000 GTQ with 5,000-6,000 profit margin)
+- [ ] Test: Verify catalog updates with fresh data
+- [ ] Test: Verify vehicle search returns viable candidates
+
+## Client Quote Feature (Cotización Cliente) (v13)
+
+- [ ] Create admin UI: "Cotización Cliente" section in AdminCalculadora
+- [ ] Input fields: Lot number + Desired profit margin (GTQ)
+- [ ] Fetch lot details from API (photos, vehicle info, VIN, odómetro, location, damage, condition)
+- [ ] Calculate total price in GTQ using calculator logic
+- [ ] Generate PDF with: vehicle photos, details, and total price (no cost breakdown)
+- [ ] PDF download functionality
+- [ ] Test with multiple vehicles
