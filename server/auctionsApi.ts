@@ -360,13 +360,17 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       // Year filter removed - show all vehicles with valid status and price
       
       // Filter 2: Must have price (bid or buy_now > 0)
-      // Temporarily disabled to debug - show all vehicles with valid status
-      // const hasBid = lot.bid && Number(lot.bid) > 0;
-      // const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
-      // if (!hasBid && !hasBuyNow) return false;
+      const hasBid = lot.bid && Number(lot.bid) > 0;
+      const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
+      if (!hasBid && !hasBuyNow) return false;
       
-      // API already filters with exclude_expired_auctions: 1
-      // Don't apply additional date filtering
+      // Filter 3: Exclude vehicles without sale_date (old auctions)
+      // The API already filters with exclude_expired_auctions: 1
+      // We just need to ensure we have a sale_date
+      if (!lot.sale_date) {
+        return false;
+      }
+      
       return true;
     });
     

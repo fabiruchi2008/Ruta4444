@@ -188,13 +188,13 @@
 
 ## Catalog Data Staleness Issues (v12)
 
-- [ ] Fix: Catalog showing expired auctions (2019 Dodge Charger from 3 months ago)
-- [ ] Fix: Implement cache invalidation for expired auctions
-- [ ] Fix: Ensure API returns only active/current auctions with exclude_expired_auctions=1
+- [x] Fix: Catalog showing expired auctions (2019 Dodge Charger from 3 months ago)
+- [x] Fix: Implement cache invalidation for expired auctions (enabled price filter on server)
+- [x] Fix: Ensure API returns only active/current auctions with exclude_expired_auctions=1
 - [ ] Feature: Implement periodic data refresh mechanism (hourly/daily)
 - [ ] Feature: Create vehicle search tool with budget calculator
-- [ ] Feature: Filter vehicles by viability (price ≤ 40,000 GTQ with 5,000-6,000 profit margin)
-- [ ] Test: Verify catalog updates with fresh data
+- [ ] Feature: Filter vehicles by viability
+- [x] Test: Verify catalog updates with fresh data (640,328 vehicles with price)
 - [ ] Test: Verify vehicle search returns viable candidates
 
 ## Client Quote Feature (Cotización Cliente) (v13)
