@@ -21,10 +21,8 @@ interface CacheEntry<T> {
 const cache = new Map<string, CacheEntry<unknown>>();
 
 function getCacheEntry<T>(key: string): CacheEntry<T> | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.staleUntil) { cache.delete(key); return null; }
-  return entry as CacheEntry<T>;
+  // DISABLED: Always return null to force fresh data from API
+  return null;
 }
 
 function setCacheEntry<T>(key: string, data: T, freshTtlMs: number): void {
@@ -364,12 +362,42 @@ export async function searchCars(params: SearchCarsParams = {}): Promise<Auction
       const hasBuyNow = lot.buy_now && Number(lot.buy_now) > 0;
       if (!hasBid && !hasBuyNow) return false;
       
-      // Filter 3: Exclude vehicles without sale_date (old auctions)
-      // The API already filters with exclude_expired_auctions: 1
-      // We just need to ensure we have a sale_date
-      if (!lot.sale_date) {
+      // Filter 3: Must have sale_date (exclude old auctions without dates)
+      if (!lot.sale_date) return false;
+      
+      // Filter 4: Sale date must be in the future (exclude expired auctions)
+      // DEBUG: Log the first few vehicles to see date format
+      if (allVehicles.length < 3) {
+        console.log(`[DEBUG sale_date] ${vehicle.year} ${vehicle.manufacturer?.name}: "${lot.sale_date}"`);
+      }
+      try {
+        const saleDate = new Date(lot.sale_date);
+        const now = new Date();
+        
+        // Compare only dates, not times (ignore hours/minutes/seconds)
+        const saleDateOnly = new Date(saleDate.getUTCFullYear(), saleDate.getUTCMonth(), saleDate.getUTCDate());
+        const nowDateOnly = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        
+        if (allVehicles.length < 3) {
+          console.log(`[DEBUG parsed] saleDate=${saleDate.toISOString()}, saleDateOnly=${saleDateOnly.toDateString()}, nowDateOnly=${nowDateOnly.toDateString()}, isPast=${saleDateOnly < nowDateOnly}`);
+        }
+        if (saleDateOnly < nowDateOnly) return false;
+      } catch (e) {
+        if (allVehicles.length < 3) {
+          console.log(`[DEBUG error] Date parse failed: ${e}`);
+        }
         return false;
       }
+      
+      // Filter 5: Must have at least one image
+      const hasImages = lot.images && (
+        lot.images.normal?.length > 0 ||
+        lot.images.small?.length > 0 ||
+        lot.images.big?.length > 0 ||
+        lot.images.exterior?.length > 0 ||
+        lot.images.interior?.length > 0
+      );
+      if (!hasImages) return false;
       
       return true;
     });
@@ -434,7 +462,8 @@ export async function searchByVin(vin: string): Promise<{ data: AuctionVehicle }
 
 export async function searchByLot(lot: string, domain?: "copart_com" | "iaai_com"): Promise<{ data: AuctionVehicle }> {
   const path = domain ? `/search-lot/${lot}/${domain}` : `/search-lot/${lot}`;
-  return apiFetch<{ data: AuctionVehicle }>(path, undefined, CACHE_15MIN);
+  // NO CACHE for individual lot searches - always get fresh data
+  return apiFetch<{ data: AuctionVehicle }>(path, undefined, 0);
 }
 
 export async function getManufacturers(): Promise<{ data: AuctionManufacturer[] }> {

@@ -546,6 +546,18 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
         if (!result?.data) throw new TRPCError({ code: "NOT_FOUND", message: "Lote no encontrado" });
         const v = result.data;
         const primaryLot = v.lots?.[0];
+        
+        // Validate that the auction date is not in the past (allow today or future)
+        if (primaryLot?.sale_date) {
+          const saleDate = new Date(primaryLot.sale_date);
+          const today = new Date();
+          // Set to end of today (23:59:59) to allow auctions happening today
+          today.setHours(23, 59, 59, 999);
+          saleDate.setHours(0, 0, 0, 0);
+          if (saleDate < today) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: `Esta subasta expiro el ${saleDate.toLocaleDateString()}. Por favor ingresa un numero de lote valido.` });
+          }
+        }
         const cityRaw = primaryLot?.location?.city as any;
         const city = cityRaw?.name ?? cityRaw ?? null;
         const stateCode = (primaryLot?.location?.state as any)?.code ?? primaryLot?.location?.state ?? "";

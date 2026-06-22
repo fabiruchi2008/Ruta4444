@@ -485,38 +485,37 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       const photoX = margin + leftColWidth + 2;
       const photoY = leftColStartY - 4;
       const photoWidth = rightColWidth;
-      const photoHeight = 35;
+      const photoHeight = 50;
       
+      // Load main image with Promise to ensure it's ready before PDF generation
       if (lotData.image) {
-        try {
-          // Try to load the image with CORS handling
+        await new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = "anonymous";
           img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-              const imgData = canvas.toDataURL('image/jpeg');
-              if (imgData) {
-                doc.addImage(imgData as string, "JPEG", photoX, photoY, photoWidth, photoHeight);
-              }
-            }
-          };
-          img.src = lotData.image;
-          // Fallback: try adding directly if canvas method fails
-          setTimeout(() => {
             try {
-              doc.addImage(lotData.image as string, "JPEG", photoX, photoY, photoWidth, photoHeight);
-            } catch (e2) {
-              console.warn("Fallback: Could not add main image", e2);
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                if (imgData) {
+                  doc.addImage(imgData as string, "JPEG", photoX, photoY, photoWidth, photoHeight);
+                }
+              }
+            } catch (e) {
+              console.warn("Error processing main image:", e);
             }
-          }, 100);
-        } catch (e) {
-          console.warn("Error adding main image:", e);
-        }
+            resolve(null);
+          };
+          img.onerror = () => {
+            console.warn("Error loading main image");
+            resolve(null);
+          };
+          img.src = lotData.image as string;
+        });
       }
       
       yPos = Math.max(yPos, photoY + photoHeight + 2);
@@ -538,9 +537,10 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
         yPos += 2.5;
         
         const thumbWidth = (pageWidth - margin * 2 - 4) / 3;
-        const thumbHeight = 16;
+        const thumbHeight = 22;
         const maxThumbs = 6;
         
+        const thumbPromises = [];
         for (let i = 0; i < Math.min(allImages.length, maxThumbs); i++) {
           const imgUrl = allImages[i];
           if (!imgUrl) continue;
@@ -550,36 +550,36 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
           const xPos = margin + col * (thumbWidth + 1.5);
           const currentYPos = yPos + row * (thumbHeight + 1);
           
-          try {
-            // Try to load thumbnail with CORS handling
+          const thumbPromise = new Promise<void>((resolve) => {
             const thumbImg = new Image();
             thumbImg.crossOrigin = "anonymous";
             thumbImg.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = thumbImg.width;
-              canvas.height = thumbImg.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.drawImage(thumbImg, 0, 0);
-                const thumbData = canvas.toDataURL('image/jpeg');
-                if (thumbData) {
-                  doc.addImage(thumbData as string, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
-                }
-              }
-            };
-            thumbImg.src = imgUrl;
-            // Fallback: try adding directly
-            setTimeout(() => {
               try {
-                doc.addImage(imgUrl as string, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
-              } catch (e2) {
-                console.warn(`Fallback: Could not add thumbnail ${i}`, e2);
+                const canvas = document.createElement('canvas');
+                canvas.width = thumbImg.width;
+                canvas.height = thumbImg.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.drawImage(thumbImg, 0, 0);
+                  const thumbData = canvas.toDataURL('image/jpeg', 0.95);
+                  if (thumbData) {
+                    doc.addImage(thumbData as string, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
+                  }
+                }
+              } catch (e) {
+                console.warn(`Error processing thumbnail ${i}:`, e);
               }
-            }, 50);
-          } catch (e) {
-            console.warn(`Error adding thumbnail ${i}:`, e);
-          }
+              resolve();
+            };
+            thumbImg.onerror = () => {
+              console.warn(`Error loading thumbnail ${i}`);
+              resolve();
+            };
+            thumbImg.src = imgUrl as string;
+          });
+          thumbPromises.push(thumbPromise);
         }
+        await Promise.all(thumbPromises);
         
         yPos += (Math.ceil(Math.min(allImages.length, maxThumbs) / 3)) * (thumbHeight + 1) + 2;
       }
