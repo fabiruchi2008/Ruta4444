@@ -7,7 +7,6 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 const LOGO_URL = "/manus-storage/ruta-cars-logo-v2_407315c0.png";
 
@@ -98,36 +97,144 @@ export default function AdminFactura() {
   }
 
   async function handleDownloadPDF() {
-    if (!facturaRef.current) return;
+    if (!vehicle || !calcData || !agreedUSD) return;
     setDownloading(true);
     try {
-      const canvas = await html2canvas(facturaRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW;
-      const imgH = (canvas.height * pageW) / canvas.width;
-      if (imgH <= pageH) {
-        pdf.addImage(imgData, "PNG", 0, 0, imgW, imgH);
-      } else {
-        // Multi-page
-        let yOffset = 0;
-        while (yOffset < imgH) {
-          if (yOffset > 0) pdf.addPage();
-          pdf.addImage(imgData, "PNG", 0, -yOffset, imgW, imgH);
-          yOffset += pageH;
-        }
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = margin;
+
+      // Header with logo
+      try {
+        doc.addImage(LOGO_URL, "PNG", margin, yPos, 15, 15);
+      } catch (e) {
+        console.warn("Error adding logo", e);
       }
+
+      doc.setFontSize(16);
+      doc.setTextColor(0, 200, 224);
+      doc.text("COTIZACIÓN", margin + 20, yPos + 5);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Folio: ${folio}`, pageW - margin - 50, yPos + 5);
+      doc.text(`Fecha: ${today}`, pageW - margin - 50, yPos + 12);
+
+      yPos += 20;
+
+      // Separator
+      doc.setDrawColor(0, 200, 224);
+      doc.line(margin, yPos, pageW - margin, yPos);
+      yPos += 5;
+
+      // Vehicle info
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`${vehicle.name}`, margin, yPos);
+      yPos += 8;
+
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`VIN: ${vehicle.vin || "—"}`, margin, yPos);
+      yPos += 5;
+      doc.text(`Lote: ${lot?.lot || searchLot}`, margin, yPos);
+      yPos += 5;
+      doc.text(`Plataforma: ${platform.toUpperCase()}`, margin, yPos);
+      yPos += 5;
+      doc.text(`Condición: ${conditionLabel}`, margin, yPos);
+      yPos += 5;
+      doc.text(`Daño: ${damageLabel}`, margin, yPos);
+      yPos += 8;
+
+      // Client info
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text("DATOS DEL CLIENTE", margin, yPos);
+      yPos += 6;
+
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      if (clientName) {
+        doc.text(`Nombre: ${clientName}`, margin, yPos);
+        yPos += 5;
+      }
+      if (clientDPI) {
+        doc.text(`DPI: ${clientDPI}`, margin, yPos);
+        yPos += 5;
+      }
+      if (clientPhone) {
+        doc.text(`Teléfono: ${clientPhone}`, margin, yPos);
+        yPos += 5;
+      }
+      yPos += 3;
+
+      // Pricing
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text("DETALLES DE PRECIO", margin, yPos);
+      yPos += 6;
+
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Costo Real de Importación: ${fmtUSD(calcData.finalPriceUSD)}`, margin, yPos);
+      yPos += 5;
+      doc.text(`Incluye: placas, trámites aduanales, transporte y entrega en Guatemala`, margin, yPos);
+      yPos += 8;
+
+      // Final price box
+      doc.setFillColor(0, 200, 224);
+      doc.rect(margin, yPos, pageW - margin * 2, 20, "F");
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text("TOTAL A PAGAR", margin + 5, yPos + 8);
+      doc.setFontSize(16);
+      doc.text(`${fmtUSD(agreedUSD)} USD`, margin + 5, yPos + 16);
+      doc.setFontSize(10);
+      doc.text(`${fmtGTQ(agreedGTQ)}`, pageW - margin - 30, yPos + 16);
+
+      yPos += 25;
+
+      // Notes
+      if (notes) {
+        doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80);
+        doc.text("NOTAS:", margin, yPos);
+        yPos += 5;
+        const splitNotes = doc.splitTextToSize(notes, pageW - margin * 2);
+        doc.text(splitNotes, margin, yPos);
+      }
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Ruta Cars GT | Importación de Vehículos USA a Guatemala", pageW / 2, pageH - 10, { align: "center" });
+
       const vehicleName = vehicle?.name ?? "vehiculo";
       const clientSlug = clientName ? `-${clientName.replace(/\s+/g, "_")}` : "";
-      pdf.save(`RutaCars-Cotizacion-${vehicleName}${clientSlug}.pdf`);
-      // Guardar en historial
+      const fileName = `RutaCars-Cotizacion-${vehicleName}${clientSlug}.pdf`;
+
+      // Download with blob method
+      try {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 100);
+      } catch (e) {
+        console.log('Usando metodo alternativo de descarga', e);
+        doc.save(fileName);
+      }
+
+      // Save to history
       saveQuotePdf.mutate({
         folio,
         lotNumber: lot?.lot ?? searchLot,
@@ -143,6 +250,8 @@ export default function AdminFactura() {
         totalCostUSD: calcData?.finalPriceUSD ?? null,
         notes: notes || null,
       });
+    } catch (error) {
+      console.error("Error generando PDF:", error);
     } finally {
       setDownloading(false);
     }
