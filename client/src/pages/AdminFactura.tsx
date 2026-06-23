@@ -180,19 +180,6 @@ export default function AdminFactura() {
         doc.text(`Teléfono: ${clientPhone}`, margin, yPos);
         yPos += 5;
       }
-      yPos += 3;
-
-      // Pricing
-      doc.setFontSize(11);
-      doc.setTextColor(0, 0, 0);
-      doc.text("DETALLES DE PRECIO", margin, yPos);
-      yPos += 6;
-
-      doc.setFontSize(9);
-      doc.setTextColor(80, 80, 80);
-      doc.text(`Costo Real de Importación: ${fmtUSD(calcData.finalPriceUSD)}`, margin, yPos);
-      yPos += 5;
-      doc.text(`Incluye: placas, trámites aduanales, transporte y entrega en Guatemala`, margin, yPos);
       yPos += 8;
 
       // Final price box
