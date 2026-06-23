@@ -102,13 +102,33 @@ export default function AdminFactura() {
     setDownloading(true);
     try {
       console.log('Capturando HTML como imagen...');
-      const canvas = await html2canvas(facturaRef.current, {
+      
+      // Clone the element to avoid modifying the original
+      const clonedElement = facturaRef.current.cloneNode(true) as HTMLElement;
+      
+      // Create a temporary container
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '-9999px';
+      tempContainer.appendChild(clonedElement);
+      document.body.appendChild(tempContainer);
+      
+      const canvas = await html2canvas(clonedElement, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
         allowTaint: true,
+        onclone: (clonedDoc) => {
+          // Remove any style tags that might contain OKLCH
+          const styles = clonedDoc.querySelectorAll('style');
+          styles.forEach(s => s.remove());
+        }
       });
+      
+      // Clean up temporary container
+      tempContainer.remove();
       console.log('Imagen capturada, convirtiendo a PDF...');
       
       const imgData = canvas.toDataURL("image/png");
