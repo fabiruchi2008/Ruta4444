@@ -119,11 +119,19 @@ export default function AdminFactura() {
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
-        allowTaint: true,
+        allowTaint: false,
+        imageTimeout: 0,
         onclone: (clonedDoc) => {
           // Remove any style tags that might contain OKLCH
           const styles = clonedDoc.querySelectorAll('style');
           styles.forEach(s => s.remove());
+          
+          // Fix CORS on images
+          const images = clonedDoc.querySelectorAll('img');
+          images.forEach(img => {
+            img.crossOrigin = 'anonymous';
+            img.setAttribute('crossOrigin', 'anonymous');
+          });
         }
       });
       
@@ -131,7 +139,13 @@ export default function AdminFactura() {
       tempContainer.remove();
       console.log('Imagen capturada, convirtiendo a PDF...');
       
-      const imgData = canvas.toDataURL("image/png");
+      let imgData: string;
+      try {
+        imgData = canvas.toDataURL("image/png");
+      } catch (e) {
+        console.warn('Canvas PNG export failed, using JPEG:', e);
+        imgData = canvas.toDataURL("image/jpeg", 0.95);
+      }
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
