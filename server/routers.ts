@@ -551,9 +551,10 @@ Responde en JSON con precios reales del mercado guatemalteco (Marketplace, OLX, 
         if (primaryLot?.sale_date) {
           const saleDate = new Date(primaryLot.sale_date);
           const today = new Date();
-          // Set to end of today (23:59:59) to allow auctions happening today
-          today.setHours(23, 59, 59, 999);
+          // Set both to start of day (00:00:00) for fair comparison
+          today.setHours(0, 0, 0, 0);
           saleDate.setHours(0, 0, 0, 0);
+          // If sale date is in the past (before today), the auction has expired
           if (saleDate < today) {
             throw new TRPCError({ code: "BAD_REQUEST", message: `Esta subasta expiro el ${saleDate.toLocaleDateString()}. Por favor ingresa un numero de lote valido.` });
           }
