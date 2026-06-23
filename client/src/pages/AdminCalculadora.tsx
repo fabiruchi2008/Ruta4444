@@ -407,16 +407,21 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
     
     setIsGenerating(true);
     try {
+      console.log('🔵 Iniciando generación de PDF...');
       // Usar exactamente la misma fórmula que la UI
       const precioClienteGTQ = Math.round((calcData.finalPriceUSD + gananciaN / calcData.exchangeRate) * calcData.exchangeRate);
+      console.log('🔵 Precio calculado:', precioClienteGTQ);
       
       // Generar PDF con jsPDF
+      console.log('🔵 Importando jsPDF...');
       const { jsPDF } = await import("jspdf");
+      console.log('🔵 Creando documento...');
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
         format: "letter",
       });
+      console.log('🔵 Documento creado');
       
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -609,21 +614,27 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       
       // Descargar PDF - Compatible con mobile
       const fileName = `Cotizacion_${lotData.year}_${lotData.make}_${lotData.model}.pdf`;
+      console.log('Generando blob del PDF...');
       try {
         const blob = doc.output('blob');
+        console.log('Blob generado, tamanio:', blob.size, 'bytes');
         const url = URL.createObjectURL(blob);
+        console.log('URL creada:', url);
         const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
         link.style.display = 'none';
         document.body.appendChild(link);
+        console.log('Link anadido, haciendo click...');
         link.click();
+        console.log('Click realizado');
         setTimeout(() => {
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
+          console.log('Limpieza completada');
         }, 100);
       } catch (e) {
-        console.log('Usando metodo alternativo de descarga', e);
+        console.log('Error en blob, usando metodo alternativo:', e);
         doc.save(fileName);
       }
     } catch (error) {
