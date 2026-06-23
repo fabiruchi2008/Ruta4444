@@ -216,23 +216,7 @@ export default function AdminFactura() {
       const fileName = `RutaCars-Cotizacion-${vehicleName}${clientSlug}.pdf`;
 
       // Download with blob method
-      try {
-        const blob = doc.output('blob');
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }, 100);
-      } catch (e) {
-        console.log('Usando metodo alternativo de descarga', e);
-        doc.save(fileName);
-      }
+      doc.save(fileName);
 
       // Save to history
       saveQuotePdf.mutate({
