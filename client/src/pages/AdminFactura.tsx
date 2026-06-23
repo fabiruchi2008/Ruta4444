@@ -335,19 +335,7 @@ export default function AdminFactura() {
                 </div>
               </div>
 
-              {/* Precio Total de Importación (sin desglose) */}
-              {calcData && (
-                <div style={{ background: "#F0F9FF", border: "2px solid #00C8E0", borderRadius: "8px", padding: "16px", marginBottom: "20px" }}>
-                  <div style={{ fontSize: "11px", fontWeight: "700", color: "#0369A1", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>Costo Total de Importación</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: "12px", color: "#0C4A6E" }}>Precio final incluye todos los costos</div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "20px", fontWeight: "900", color: "#00C8E0" }}>{fmtUSD(calcData.finalPriceUSD)}</div>
-                      <div style={{ fontSize: "12px", color: "#0369A1", marginTop: "2px" }}>{fmtGTQ(calcData.finalPriceGTQ)}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               {/* Total a Pagar */}
               {agreedUSD && (
