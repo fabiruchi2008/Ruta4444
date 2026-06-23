@@ -335,24 +335,15 @@ export default function AdminFactura() {
                 </div>
               </div>
 
-              {/* Desglose de costos */}
+              {/* Precio Total de Importación (sin desglose) */}
               {calcData && (
-                <div style={{ marginBottom: "20px" }}>
-                  <div style={{ fontSize: "11px", fontWeight: "700", color: "#6B7280", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>Desglose de Importación</div>
-                  <div style={{ border: "1px solid #E5E7EB", borderRadius: "8px", overflow: "hidden" }}>
-                    {calcData.breakdown.map((item, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 14px", background: i % 2 === 0 ? "#F9FAFB" : "#ffffff", borderBottom: "1px solid #F3F4F6" }}>
-                        <span style={{ fontSize: "12px", color: "#374151" }}>{item.label}</span>
-                        <span style={{ fontSize: "12px", fontWeight: "700", color: "#111827" }}>{fmtUSD(item.amountUSD)}</span>
-                      </div>
-                    ))}
-                    {/* Total */}
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#080D18" }}>
-                      <span style={{ fontSize: "14px", fontWeight: "900", color: "#ffffff" }}>TOTAL IMPORTACIÓN</span>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "16px", fontWeight: "900", color: "#00C8E0" }}>{fmtUSD(calcData.finalPriceUSD)}</div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF" }}>{fmtGTQ(calcData.finalPriceGTQ)}</div>
-                      </div>
+                <div style={{ background: "#F0F9FF", border: "2px solid #00C8E0", borderRadius: "8px", padding: "16px", marginBottom: "20px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: "700", color: "#0369A1", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>Costo Total de Importación</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#0C4A6E" }}>Precio final incluye todos los costos</div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "20px", fontWeight: "900", color: "#00C8E0" }}>{fmtUSD(calcData.finalPriceUSD)}</div>
+                      <div style={{ fontSize: "12px", color: "#0369A1", marginTop: "2px" }}>{fmtGTQ(calcData.finalPriceGTQ)}</div>
                     </div>
                   </div>
                 </div>

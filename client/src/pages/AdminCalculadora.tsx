@@ -413,7 +413,7 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       // Generar PDF con jsPDF
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape",
         unit: "mm",
         format: "letter",
       });
@@ -421,7 +421,7 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const LOGO_URL = "/manus-storage/ruta-cars-logo-v2_407315c0.png";
-      const margin = 12;
+      const margin = 10;
       let yPos = margin;
       
       // ═══════════════════════════════════════════════════════════════════════════
@@ -429,63 +429,40 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       // ═══════════════════════════════════════════════════════════════════════════
       
       try {
-        doc.addImage(LOGO_URL, "PNG", margin, yPos, 14, 14);
+        doc.addImage(LOGO_URL, "PNG", margin, yPos, 12, 12);
       } catch (e) {
         console.warn("Error adding logo:", e);
       }
       
-      doc.setFontSize(16);
+      doc.setFontSize(14);
       doc.setTextColor(0, 200, 224);
-      doc.text("RUTA CARS GT", margin + 18, yPos + 4);
+      doc.text("RUTA CARS GT", margin + 15, yPos + 3);
       
-      doc.setFontSize(7);
+      doc.setFontSize(6);
       doc.setTextColor(150, 150, 150);
-      doc.text("Cotización de Importación", margin + 18, yPos + 10);
+      doc.text("Cotización de Importación", margin + 15, yPos + 8);
       
-      yPos += 18;
+      // Información del vehículo (lado derecho del header)
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${lotData.year} ${lotData.make} ${lotData.model}`, pageWidth - margin - 80, yPos + 3);
+      doc.setFontSize(5.5);
+      doc.text(`VIN: ${lotData.vin || "—"}`, pageWidth - margin - 80, yPos + 7);
+      doc.text(`Lote: ${lotData.lot || lotQuery}`, pageWidth - margin - 80, yPos + 10);
+      
+      yPos += 15;
       
       // Línea separadora
       doc.setDrawColor(0, 200, 224);
       doc.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 3;
+      yPos += 2;
       
       // ═══════════════════════════════════════════════════════════════════════════
-      // LAYOUT: 2 COLUMNAS (Izq: Info, Der: Foto)
+      // FOTO PRINCIPAL: Grande en la parte superior
       // ═══════════════════════════════════════════════════════════════════════════
       
-      const leftColWidth = 80;
-      const rightColWidth = pageWidth - margin * 2 - leftColWidth - 2;
-      
-      // COLUMNA IZQUIERDA: Información compacta
-      doc.setFontSize(10);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`${lotData.year} ${lotData.make} ${lotData.model}`, margin, yPos);
-      yPos += 4;
-      
-      doc.setFontSize(7.5);
-      doc.setTextColor(150, 150, 150);
-      const infoLines = [
-        `VIN: ${lotData.vin || "—"}`,
-        `Lote: ${lotData.lot || lotQuery}`,
-        `Plataforma: ${lotData.platform?.toUpperCase() || "—"}`,
-        `Ubicación: ${lotData.city}, ${lotData.stateCode}`,
-        `Tipo: ${lotData.bodyType || "—"}`,
-        `Odómetro: ${lotData.odometer ? fmt(lotData.odometer) + " mi" : "—"}`,
-        `Condición: ${lotData.condition || "—"}`,
-        `Daño: ${lotData.damageMain || "—"}`,
-      ];
-      
-      const leftColStartY = yPos;
-      infoLines.forEach((line) => {
-        doc.text(line, margin, yPos);
-        yPos += 3;
-      });
-      
-      // COLUMNA DERECHA: Foto principal (compacta)
-      const photoX = margin + leftColWidth + 2;
-      const photoY = leftColStartY - 4;
-      const photoWidth = rightColWidth;
-      const photoHeight = 50;
+      const mainPhotoWidth = pageWidth - margin * 2;
+      const mainPhotoHeight = 65;
       
       // Load main image with Promise to ensure it's ready before PDF generation
       if (lotData.image) {
@@ -494,15 +471,27 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
           img.crossOrigin = "anonymous";
           img.onload = () => {
             try {
+              // Create canvas with original aspect ratio
               const canvas = document.createElement('canvas');
+              const aspectRatio = img.width / img.height;
+              
+              // Set canvas size for high quality
               canvas.width = img.width;
               canvas.height = img.height;
               const ctx = canvas.getContext('2d');
               if (ctx) {
+                // Fill background to avoid transparency issues
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Draw image maintaining aspect ratio
                 ctx.drawImage(img, 0, 0);
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                // Higher quality JPEG
+                const imgData = canvas.toDataURL('image/jpeg', 0.99);
                 if (imgData) {
-                  doc.addImage(imgData as string, "JPEG", photoX, photoY, photoWidth, photoHeight);
+                  // Calculate height based on aspect ratio to avoid stretching
+                  const actualHeight = mainPhotoWidth / aspectRatio;
+                  const constrainedHeight = Math.min(actualHeight, mainPhotoHeight);
+                  doc.addImage(imgData as string, "JPEG", margin, yPos, mainPhotoWidth, constrainedHeight);
                 }
               }
             } catch (e) {
@@ -518,70 +507,80 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
         });
       }
       
-      yPos = Math.max(yPos, photoY + photoHeight + 2);
-      yPos += 2;
+      yPos += mainPhotoHeight + 2;
       
       // ═══════════════════════════════════════════════════════════════════════════
-      // MINI GALLERY: Thumbnails compactos (3 columnas)
+      // GALLERY: Fotos grandes distribuidas (2 columnas)
       // ═══════════════════════════════════════════════════════════════════════════
       
       const allImages = (lotData as any).allImages || [];
-      if (allImages.length > 0 && yPos < pageHeight - 40) {
+      if (allImages.length > 0 && yPos < pageHeight - 20) {
         doc.setDrawColor(0, 200, 224);
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 2;
         
-        doc.setFontSize(7);
+        doc.setFontSize(6.5);
         doc.setTextColor(0, 200, 224);
-        doc.text("Galería", margin, yPos);
-        yPos += 2.5;
+        doc.text("Galería de Detalles", margin, yPos);
+        yPos += 3;
         
-        const thumbWidth = (pageWidth - margin * 2 - 4) / 3;
-        const thumbHeight = 22;
-        const maxThumbs = 6;
+        // 2 columnas para fotos más grandes
+        const galleryWidth = (pageWidth - margin * 2 - 2) / 2;
+        const galleryHeight = 35;
+        const maxGalleryPhotos = 4; // 2 filas x 2 columnas
         
-        const thumbPromises = [];
-        for (let i = 0; i < Math.min(allImages.length, maxThumbs); i++) {
+        const galleryPromises = [];
+        for (let i = 0; i < Math.min(allImages.length, maxGalleryPhotos); i++) {
           const imgUrl = allImages[i];
           if (!imgUrl) continue;
           
-          const col = i % 3;
-          const row = Math.floor(i / 3);
-          const xPos = margin + col * (thumbWidth + 1.5);
-          const currentYPos = yPos + row * (thumbHeight + 1);
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          const xPos = margin + col * (galleryWidth + 2);
+          const currentYPos = yPos + row * (galleryHeight + 2);
           
-          const thumbPromise = new Promise<void>((resolve) => {
-            const thumbImg = new Image();
-            thumbImg.crossOrigin = "anonymous";
-            thumbImg.onload = () => {
+          const galleryPromise = new Promise<void>((resolve) => {
+            const galleryImg = new Image();
+            galleryImg.crossOrigin = "anonymous";
+            galleryImg.onload = () => {
               try {
                 const canvas = document.createElement('canvas');
-                canvas.width = thumbImg.width;
-                canvas.height = thumbImg.height;
+                const galleryAspectRatio = galleryImg.width / galleryImg.height;
+                
+                // High quality canvas
+                canvas.width = galleryImg.width;
+                canvas.height = galleryImg.height;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
-                  ctx.drawImage(thumbImg, 0, 0);
-                  const thumbData = canvas.toDataURL('image/jpeg', 0.95);
-                  if (thumbData) {
-                    doc.addImage(thumbData as string, "JPEG", xPos, currentYPos, thumbWidth, thumbHeight);
+                  // Fill background
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(galleryImg, 0, 0);
+                  // Maximum quality JPEG
+                  const galleryData = canvas.toDataURL('image/jpeg', 0.99);
+                  if (galleryData) {
+                    // Maintain aspect ratio
+                    const actualGalleryHeight = galleryWidth / galleryAspectRatio;
+                    const constrainedHeight = Math.min(actualGalleryHeight, galleryHeight);
+                    doc.addImage(galleryData as string, "JPEG", xPos, currentYPos, galleryWidth, constrainedHeight);
                   }
                 }
               } catch (e) {
-                console.warn(`Error processing thumbnail ${i}:`, e);
+                console.warn(`Error processing gallery photo ${i}:`, e);
               }
               resolve();
             };
-            thumbImg.onerror = () => {
-              console.warn(`Error loading thumbnail ${i}`);
+            galleryImg.onerror = () => {
+              console.warn(`Error loading gallery photo ${i}`);
               resolve();
             };
-            thumbImg.src = imgUrl as string;
+            galleryImg.src = imgUrl as string;
           });
-          thumbPromises.push(thumbPromise);
+          galleryPromises.push(galleryPromise);
         }
-        await Promise.all(thumbPromises);
+        await Promise.all(galleryPromises);
         
-        yPos += (Math.ceil(Math.min(allImages.length, maxThumbs) / 3)) * (thumbHeight + 1) + 2;
+        yPos += (Math.ceil(Math.min(allImages.length, maxGalleryPhotos) / 2)) * (galleryHeight + 2) + 2;
       }
       
       // ═══════════════════════════════════════════════════════════════════════════
