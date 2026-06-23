@@ -607,8 +607,17 @@ function TabClientQuote({ isAuth }: { isAuth: boolean }) {
       doc.setTextColor(100, 100, 100);
       doc.text("Ruta Cars GT | Importación de Vehículos USA a Guatemala", pageWidth / 2, pageHeight - 2, { align: "center" });
       
-      // Descargar PDF
-      doc.save(`Cotizacion_${lotData.year}_${lotData.make}_${lotData.model}.pdf`);
+      // Descargar PDF - Compatible con mobile
+      const fileName = `Cotizacion_${lotData.year}_${lotData.make}_${lotData.model}.pdf`;
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error generando PDF:", error);
     } finally {
