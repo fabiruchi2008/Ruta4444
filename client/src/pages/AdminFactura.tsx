@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const LOGO_URL = "/manus-storage/ruta-cars-logo-v2_407315c0.png";
 
@@ -97,127 +98,47 @@ export default function AdminFactura() {
   }
 
   async function handleDownloadPDF() {
-    if (!vehicle || !calcData || !agreedUSD) return;
+    if (!facturaRef.current || !agreedUSD) return;
     setDownloading(true);
     try {
-      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const margin = 15;
-      let yPos = margin;
-
-      // Header with logo
-      try {
-        doc.addImage(LOGO_URL, "PNG", margin, yPos, 15, 15);
-      } catch (e) {
-        console.warn("Error adding logo", e);
-      }
-
-      doc.setFontSize(16);
-      doc.setTextColor(0, 200, 224);
-      doc.text("COTIZACIÓN", margin + 20, yPos + 5);
-
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Folio: ${folio}`, pageW - margin - 50, yPos + 5);
-      doc.text(`Fecha: ${today}`, pageW - margin - 50, yPos + 12);
-
-      yPos += 20;
-
-      // Separator
-      doc.setDrawColor(0, 200, 224);
-      doc.line(margin, yPos, pageW - margin, yPos);
-      yPos += 5;
-
-      // Vehicle image
-      if (imageUrl) {
-        try {
-          doc.addImage(imageUrl, "JPEG", margin, yPos, 60, 45);
-          yPos += 50;
-        } catch (e) {
-          console.warn("Error adding vehicle image", e);
-          yPos += 5;
+      console.log('Capturando HTML como imagen...');
+      const canvas = await html2canvas(facturaRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        allowTaint: true,
+      });
+      console.log('Imagen capturada, convirtiendo a PDF...');
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * pageW) / canvas.width;
+      
+      if (imgH <= pageH) {
+        pdf.addImage(imgData, "PNG", 0, 0, imgW, imgH);
+      } else {
+        // Multi-page if needed
+        let yOffset = 0;
+        while (yOffset < imgH) {
+          if (yOffset > 0) pdf.addPage();
+          pdf.addImage(imgData, "PNG", 0, -yOffset, imgW, imgH);
+          yOffset += pageH;
         }
       }
-
-      // Vehicle info
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      const vehicleDisplayName = vehicle?.name || 'Vehículo';
-      doc.text(`${vehicleDisplayName}`, margin, yPos);
-      yPos += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(80, 80, 80);
-      doc.text(`VIN: ${vehicle.vin || "—"}`, margin, yPos);
-      yPos += 5;
-      doc.text(`Lote: ${lot?.lot || searchLot}`, margin, yPos);
-      yPos += 5;
-      doc.text(`Plataforma: ${platform.toUpperCase()}`, margin, yPos);
-      yPos += 5;
-      doc.text(`Condición: ${conditionLabel}`, margin, yPos);
-      yPos += 5;
-      doc.text(`Daño: ${damageLabel}`, margin, yPos);
-      yPos += 8;
-
-      // Client info
-      doc.setFontSize(11);
-      doc.setTextColor(0, 0, 0);
-      doc.text("DATOS DEL CLIENTE", margin, yPos);
-      yPos += 6;
-
-      doc.setFontSize(9);
-      doc.setTextColor(80, 80, 80);
-      if (clientName) {
-        doc.text(`Nombre: ${clientName}`, margin, yPos);
-        yPos += 5;
-      }
-      if (clientDPI) {
-        doc.text(`DPI: ${clientDPI}`, margin, yPos);
-        yPos += 5;
-      }
-      if (clientPhone) {
-        doc.text(`Teléfono: ${clientPhone}`, margin, yPos);
-        yPos += 5;
-      }
-      yPos += 8;
-
-      // Final price box
-      doc.setFillColor(0, 200, 224);
-      doc.rect(margin, yPos, pageW - margin * 2, 20, "F");
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text("TOTAL A PAGAR", margin + 5, yPos + 8);
-      doc.setFontSize(16);
-      doc.text(`${fmtUSD(agreedUSD)} USD`, margin + 5, yPos + 16);
-      doc.setFontSize(10);
-      doc.text(`${fmtGTQ(agreedGTQ)}`, pageW - margin - 30, yPos + 16);
-
-      yPos += 25;
-
-      // Notes
-      if (notes) {
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
-        doc.text("NOTAS:", margin, yPos);
-        yPos += 5;
-        const splitNotes = doc.splitTextToSize(notes, pageW - margin * 2);
-        doc.text(splitNotes, margin, yPos);
-      }
-
-      // Footer
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text("Ruta Cars GT | Importación de Vehículos USA a Guatemala", pageW / 2, pageH - 10, { align: "center" });
-
+      
       const vehicleName = vehicle?.name ?? "vehiculo";
       const clientSlug = clientName ? `-${clientName.replace(/\s+/g, "_")}` : "";
       const fileName = `RutaCars-Cotizacion-${vehicleName}${clientSlug}.pdf`;
-
-      // Download with blob method
-      doc.save(fileName);
-
+      
+      console.log('Descargando PDF...');
+      pdf.save(fileName);
+      
       // Save to history
+      const folio = `RC-${Date.now().toString().slice(-6)}`;
       saveQuotePdf.mutate({
         folio,
         lotNumber: lot?.lot ?? searchLot,
@@ -427,8 +348,6 @@ export default function AdminFactura() {
                 </div>
               </div>
 
-
-
               {/* Total a Pagar */}
               {agreedUSD && (
                 <div style={{ background: "#ECFDF5", border: "2px solid #10B981", borderRadius: "8px", padding: "16px", marginBottom: "20px" }}>
@@ -448,93 +367,24 @@ export default function AdminFactura() {
               {/* Notas */}
               {notes && (
                 <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "8px", padding: "12px", marginBottom: "20px" }}>
-                  <div style={{ fontSize: "11px", fontWeight: "700", color: "#92400E", marginBottom: "4px" }}>NOTAS</div>
-                  <div style={{ fontSize: "12px", color: "#78350F" }}>{notes}</div>
+                  <div style={{ fontSize: "11px", fontWeight: "700", color: "#92400E", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Notas</div>
+                  <div style={{ fontSize: "12px", color: "#B45309" }}>{notes}</div>
                 </div>
               )}
 
               {/* Footer */}
-              <div style={{ borderTop: "2px solid #E5E7EB", paddingTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: "10px", color: "#9CA3AF" }}>Esta cotización es válida por 7 días hábiles.</div>
-                  <div style={{ fontSize: "10px", color: "#9CA3AF" }}>Los precios pueden variar según el tipo de cambio vigente.</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "12px", fontWeight: "700", color: "#00C8E0" }}>rutacarsgt.com</div>
-                  <div style={{ fontSize: "10px", color: "#9CA3AF" }}>+502 3122-0803</div>
-                </div>
+              <div style={{ fontSize: "10px", color: "#9CA3AF", textAlign: "center", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #E5E7EB" }}>
+                <p>Esta cotización es válida por 7 días hábiles.</p>
+                <p>Los precios pueden variar según el tipo de cambio vigente.</p>
               </div>
             </div>
           ) : (
-            <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-12 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
-              <FileText className="w-16 h-16 text-slate-600 mb-4" />
-              <p className="text-slate-400 text-lg font-medium">Vista previa de la cotización</p>
-              <p className="text-slate-600 text-sm mt-2">Ingresá un número de lote para generar la cotización</p>
+            <div style={{ background: "#F9FAFB", borderRadius: "8px", padding: "32px", textAlign: "center", color: "#9CA3AF" }}>
+              <p>Busca un vehículo para ver la vista previa de la cotización</p>
             </div>
           )}
         </div>
       </div>
-
-      {/* Historial de cotizaciones */}
-      {historial && historial.length > 0 && (
-        <div className="container max-w-5xl px-4 pb-12">
-          <div className="bg-[#0F1624] border border-[#1F2D45] rounded-2xl p-5">
-            <h2 className="font-bold text-white flex items-center gap-2 mb-4">
-              <Clock className="w-4 h-4 text-[#00C8E0]" /> Historial de Cotizaciones Generadas
-              <span className="text-xs bg-[#243048] text-slate-400 px-2 py-0.5 rounded ml-1">{historial.length}</span>
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#243048] text-slate-400 text-xs">
-                    <th className="text-left py-2 pr-4">Folio</th>
-                    <th className="text-left py-2 pr-4">Vehículo</th>
-                    <th className="text-left py-2 pr-4">Cliente</th>
-                    <th className="text-left py-2 pr-4">Precio Acordado</th>
-                    <th className="text-left py-2 pr-4">Costo Real</th>
-                    <th className="text-left py-2">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historial.map(q => (
-                    <tr key={q.id} className="border-b border-[#1F2D45] hover:bg-[#141E30] transition-colors">
-                      <td className="py-2.5 pr-4 font-mono text-[#00C8E0] text-xs">{q.folio}</td>
-                      <td className="py-2.5 pr-4">
-                        <div className="font-semibold text-white text-xs">{q.vehicleName}</div>
-                        <div className="text-slate-500 text-xs">Lote: {q.lotNumber}</div>
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        <div className="text-white text-xs">{q.clientName || <span className="text-slate-600">Sin nombre</span>}</div>
-                        {q.clientDpi && <div className="text-slate-500 text-xs">DPI: {q.clientDpi}</div>}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {q.agreedPriceUSD
-                          ? <span className="text-green-400 font-bold text-xs">${q.agreedPriceUSD.toLocaleString()}</span>
-                          : <span className="text-slate-600 text-xs">—</span>}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {q.totalCostUSD
-                          ? <span className="text-slate-300 text-xs">${q.totalCostUSD.toLocaleString()}</span>
-                          : <span className="text-slate-600 text-xs">—</span>}
-                      </td>
-                      <td className="py-2.5 text-slate-400 text-xs">
-                        {new Date(q.createdAt).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast guardado */}
-      {savedOk && (
-        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 z-50 animate-in slide-in-from-bottom-4">
-          <CheckCircle className="w-4 h-4" /> Cotización guardada en historial
-        </div>
-      )}
     </div>
   );
 }
