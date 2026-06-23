@@ -349,16 +349,18 @@ export default function AdminFactura() {
                 </div>
               )}
 
-              {/* Precio Acordado */}
+              {/* Total a Pagar */}
               {agreedUSD && (
-                <div style={{ background: "#ECFDF5", border: "2px solid #10B981", borderRadius: "8px", padding: "14px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: "11px", fontWeight: "700", color: "#065F46", textTransform: "uppercase", letterSpacing: "1px" }}>Precio Acordado con Cliente</div>
-                    <div style={{ fontSize: "10px", color: "#6EE7B7", marginTop: "2px" }}>Precio final confirmado</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "22px", fontWeight: "900", color: "#059669" }}>${agreedUSD.toLocaleString("es-GT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} USD</div>
-                    {agreedGTQ && <div style={{ fontSize: "13px", color: "#10B981" }}>Q{agreedGTQ.toLocaleString("es-GT")} GTQ</div>}
+                <div style={{ background: "#ECFDF5", border: "2px solid #10B981", borderRadius: "8px", padding: "16px", marginBottom: "20px" }}>
+                  <div style={{ fontSize: "10px", color: "#6B7280", marginBottom: "8px" }}>Incluye: placas, trámites aduanales, transporte y entrega en Guatemala</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: "11px", fontWeight: "700", color: "#065F46", textTransform: "uppercase", letterSpacing: "1px" }}>Total a Pagar</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "24px", fontWeight: "900", color: "#059669" }}>${agreedUSD.toLocaleString("es-GT", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} USD</div>
+                      {agreedGTQ && <div style={{ fontSize: "14px", color: "#10B981", marginTop: "2px" }}>Q{agreedGTQ.toLocaleString("es-GT")} GTQ</div>}
+                    </div>
                   </div>
                 </div>
               )}
