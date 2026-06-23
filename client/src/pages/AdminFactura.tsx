@@ -129,10 +129,22 @@ export default function AdminFactura() {
       doc.line(margin, yPos, pageW - margin, yPos);
       yPos += 5;
 
+      // Vehicle image
+      if (imageUrl) {
+        try {
+          doc.addImage(imageUrl, "JPEG", margin, yPos, 60, 45);
+          yPos += 50;
+        } catch (e) {
+          console.warn("Error adding vehicle image", e);
+          yPos += 5;
+        }
+      }
+
       // Vehicle info
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
-      doc.text(`${vehicle.name}`, margin, yPos);
+      const vehicleDisplayName = vehicle?.name || 'Vehículo';
+      doc.text(`${vehicleDisplayName}`, margin, yPos);
       yPos += 8;
 
       doc.setFontSize(9);
